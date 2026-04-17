@@ -1,5 +1,7 @@
 import { useState, useRef } from 'react';
-import { X, Target, Trash2, TrendingUp, TrendingDown } from 'lucide-react';
+import { X, Target, Trash2, TrendingUp, TrendingDown, GripVertical } from 'lucide-react';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import type { WatchlistItem, StockQuote } from '../types';
 
 interface StockTileProps {
@@ -11,6 +13,18 @@ interface StockTileProps {
 }
 
 export function StockTile({ item, quote, hasFetched, onRemove, onSetTarget }: StockTileProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: item.symbol,
+  });
+
+  const dragStyle: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.45 : 1,
+    boxShadow: isDragging ? '0 8px 30px rgba(0,0,0,0.4)' : undefined,
+    zIndex: isDragging ? 10 : undefined,
+    position: 'relative',
+  };
   const [showTargetInput, setShowTargetInput] = useState(false);
   const [targetInput, setTargetInput] = useState(
     item.targetPrice !== undefined ? String(item.targetPrice) : ''
@@ -51,8 +65,16 @@ export function StockTile({ item, quote, hasFetched, onRemove, onSetTarget }: St
   const tileClass = `stock-tile ${isPositive ? 'tile-positive' : 'tile-negative'} ${item.alertFired ? 'tile-alert-fired' : ''}`;
 
   return (
-    <div className={tileClass}>
+    <div ref={setNodeRef} style={dragStyle} className={tileClass}>
       <div className="tile-header">
+        <button
+          className="tile-drag-handle"
+          {...listeners}
+          {...attributes}
+          aria-label="Drag to reorder"
+        >
+          <GripVertical size={14} />
+        </button>
         <div className="tile-symbol-wrap">
           <span className="tile-symbol">{item.symbol}</span>
           {item.targetPrice !== undefined && (

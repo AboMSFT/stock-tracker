@@ -1,5 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, RefreshCw, Bell } from 'lucide-react';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable';
 import { useWatchlist } from './hooks/useWatchlist';
 import { useStockPrices } from './hooks/useStockPrices';
 import { StockTile } from './components/StockTile';
@@ -10,9 +20,21 @@ import { sendNotification, requestNotificationPermission } from './utils/notific
 import type { AlertEvent } from './types';
 
 export default function App() {
-  const { items, addStock, removeStock, setTargetPrice, markAlertFired } = useWatchlist();
+  const { items, addStock, removeStock, setTargetPrice, markAlertFired, reorderStocks } = useWatchlist();
   const symbols = items.map((i) => i.symbol);
   const { quotes, loading, hasFetched, error } = useStockPrices(symbols, 30000);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } })
+  );
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      reorderStocks(String(active.id), String(over.id));
+    }
+  }
 
   const [showSearch, setShowSearch] = useState(false);
   const [activeAlerts, setActiveAlerts] = useState<AlertEvent[]>([]);
@@ -107,18 +129,22 @@ export default function App() {
             </button>
           </div>
         ) : (
-          <div className="tiles-grid">
-            {items.map((item) => (
-              <StockTile
-                key={item.symbol}
-                item={item}
-                quote={quotes.get(item.symbol)}
-                hasFetched={hasFetched}
-                onRemove={removeStock}
-                onSetTarget={setTargetPrice}
-              />
-            ))}
-          </div>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={symbols} strategy={rectSortingStrategy}>
+              <div className="tiles-grid">
+                {items.map((item) => (
+                  <StockTile
+                    key={item.symbol}
+                    item={item}
+                    quote={quotes.get(item.symbol)}
+                    hasFetched={hasFetched}
+                    onRemove={removeStock}
+                    onSetTarget={setTargetPrice}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
         )}
       </main>
 

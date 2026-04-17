@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { arrayMove } from '@dnd-kit/sortable';
 import type { WatchlistItem } from '../types';
 
 const STORAGE_KEY = 'stock-tracker-watchlist';
@@ -70,5 +71,17 @@ export function useWatchlist() {
     });
   }, []);
 
-  return { items, addStock, removeStock, setTargetPrice, markAlertFired };
+  const reorderStocks = useCallback((activeId: string, overId: string) => {
+    if (!activeId || !overId || activeId === overId) return;
+    setItems((prev) => {
+      const oldIndex = prev.findIndex((i) => i.symbol === activeId);
+      const newIndex = prev.findIndex((i) => i.symbol === overId);
+      if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return prev;
+      const updated = arrayMove(prev, oldIndex, newIndex);
+      saveToStorage(updated);
+      return updated;
+    });
+  }, []);
+
+  return { items, addStock, removeStock, setTargetPrice, markAlertFired, reorderStocks };
 }
