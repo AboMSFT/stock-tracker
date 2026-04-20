@@ -12,17 +12,26 @@ export default defineConfig({
   server: {
     host: true,
     proxy: {
-      '/api/yahoo': {
+      '/api/quote': {
         target: 'https://query1.finance.yahoo.com',
         changeOrigin: true,
         headers: yahooHeaders,
-        rewrite: (path) => path.replace(/^\/api\/yahoo/, ''),
+        rewrite: (path) => {
+          const url = new URL(path, 'http://localhost');
+          const symbol = url.searchParams.get('symbol') ?? '';
+          const interval = url.searchParams.get('interval') ?? '1d';
+          const range = url.searchParams.get('range') ?? '1d';
+          return `/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${interval}&range=${range}`;
+        },
       },
-      '/api/search': {
+      '/api/stocksearch': {
         target: 'https://query2.finance.yahoo.com',
         changeOrigin: true,
         headers: yahooHeaders,
-        rewrite: (path) => path.replace(/^\/api\/search/, ''),
+        rewrite: (path) => {
+          const url = new URL(path, 'http://localhost');
+          return `/v1/finance/search?${url.searchParams.toString()}`;
+        },
       },
     },
   },

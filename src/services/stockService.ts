@@ -3,7 +3,7 @@ import type { StockQuote, SearchResult } from '../types';
 async function fetchSingleQuote(symbol: string): Promise<StockQuote | null> {
   try {
     const res = await fetch(
-      `/api/yahoo/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`
+      `/api/quote?symbol=${encodeURIComponent(symbol)}&interval=1d&range=1d`
     );
     if (!res.ok) return null;
     const data = await res.json();
@@ -39,7 +39,7 @@ export async function fetchQuotes(symbols: string[]): Promise<StockQuote[]> {
 export async function searchStocks(query: string): Promise<SearchResult[]> {
   if (!query.trim()) return [];
   const res = await fetch(
-    `/api/search/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=10&newsCount=0&listsCount=0`
+    `/api/stocksearch?q=${encodeURIComponent(query)}&quotesCount=10&newsCount=0&listsCount=0`
   );
   if (!res.ok) throw new Error('Search failed');
   const data = await res.json();

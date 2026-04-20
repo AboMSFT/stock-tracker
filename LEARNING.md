@@ -37,7 +37,12 @@
    - [Vite](#2-vite)
    - [Git](#3-git)
    - [Running on Your Phone](#4-running-on-your-phone)
-5. [Quick Reference Tables](#quick-reference-tables)
+5. [Deploying to Production](#deploying-to-production)
+   - [What is a Production Build?](#what-is-a-production-build)
+   - [Static Hosting — Vercel, Netlify, GitHub Pages](#static-hosting--vercel-netlify-github-pages)
+   - [Self-hosted — Nginx and Apache](#self-hosted--nginx-and-apache)
+   - [Azure — Static Web Apps + Azure Functions](#azure--static-web-apps--azure-functions)
+6. [Quick Reference Tables](#quick-reference-tables)
 
 ---
 
@@ -1197,6 +1202,286 @@ bind(sock, "127.0.0.1", 5173);
 // With host: true — all network interfaces
 bind(sock, "0.0.0.0", 5173);
 ```
+
+---
+
+# Deploying to Production
+
+## What is a Production Build?
+
+During development, Vite runs a local server that serves your files on the fly. For production, you need to **build** your app into optimized static files:
+
+```bash
+npm run build
+```
+
+This creates a `dist/` folder:
+```
+dist/
+├── index.html          ← entry point
+├── assets/
+│   ├── index-abc123.js ← all your JS, minified + bundled
+│   └── index-abc123.css
+└── staticwebapp.config.json
+```
+
+These are plain HTML/CSS/JS files — any web server can host them.
+
+> ⚠️ **Important for this app:** The Vite proxy (used for Yahoo Finance API calls) only works in dev. In production you need a real backend to proxy the API. See the Azure section below.
+
+---
+
+## Static Hosting — Vercel, Netlify, GitHub Pages
+
+Best for simple apps with no backend requirements.
+
+### Vercel (Recommended — easiest)
+```bash
+npm install -g vercel
+vercel          # follow prompts, auto-detects Vite
+```
+Or connect your GitHub repo on [vercel.com](https://vercel.com) — deploys automatically on every `git push`.
+
+### Netlify
+```bash
+npm install -g netlify-cli
+netlify deploy --dir=dist --prod
+```
+Or drag and drop your `dist/` folder at [netlify.com](https://netlify.com).
+
+### GitHub Pages
+```bash
+npm install -D gh-pages
+
+# Add to package.json scripts:
+"deploy": "vite build && gh-pages -d dist"
+
+npm run deploy
+```
+
+> ⚠️ **Limitation:** These platforms host static files only. The Yahoo Finance proxy won't work — you'd need to add a serverless function (Vercel Functions, Netlify Functions) separately.
+
+---
+
+## Self-hosted — Nginx and Apache
+
+If you have your own Linux server or VM.
+
+### Nginx
+
+**1. Build your app:**
+```bash
+npm run build
+```
+
+**2. Copy `dist/` to the server:**
+```bash
+scp -r dist/* user@yourserver:/var/www/stock-tracker/
+```
+
+**3. Nginx config (`/etc/nginx/sites-available/stock-tracker`):**
+```nginx
+server {
+    listen 80;
+    server_name yourdomain.com;
+    root /var/www/stock-tracker;
+    index index.html;
+
+    # SPA routing — send all requests to index.html
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Proxy Yahoo Finance API calls
+    location /api/quote {
+        proxy_pass https://query1.finance.yahoo.com/v8/finance/chart/;
+        proxy_set_header Referer "https://finance.yahoo.com/";
+        proxy_set_header Origin "https://finance.yahoo.com";
+    }
+
+    location /api/stocksearch {
+        proxy_pass https://query2.finance.yahoo.com/v1/finance/search;
+        proxy_set_header Referer "https://finance.yahoo.com/";
+        proxy_set_header Origin "https://finance.yahoo.com";
+    }
+}
+```
+
+**4. Enable and restart:**
+```bash
+sudo ln -s /etc/nginx/sites-available/stock-tracker /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+### Apache
+
+**Apache config (`.htaccess` in your `dist/` folder):**
+```apache
+Options -MultiViews
+RewriteEngine On
+
+# SPA routing
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^ index.html [QSA,L]
+```
+
+> The `try_files` / `RewriteRule` for SPA routing is critical — without it, refreshing the page on any route other than `/` gives a 404.
+
+---
+
+## Azure — Static Web Apps + Azure Functions
+
+The best option if you have an Azure subscription. Hosts the frontend **and** the API proxy together, both on the free tier.
+
+### Architecture
+
+```
+Browser
+   ↓
+Azure Static Web Apps     ← hosts dist/ (your React app)
+   ↓ /api/* routes
+Azure Functions           ← proxies Yahoo Finance calls
+   ↓
+Yahoo Finance API
+```
+
+### Why Azure Functions for the API?
+
+The Vite dev proxy only runs locally. In production, the browser can't call Yahoo Finance directly (CORS + Referer blocking). Azure Functions act as a server-side proxy — just like the Vite proxy did in dev.
+
+### Project structure
+
+```
+stock-tracker/
+├── src/                  ← React app (unchanged)
+├── public/
+│   └── staticwebapp.config.json  ← SPA routing config
+├── api/                  ← Azure Functions
+│   ├── host.json         ← Functions runtime config
+│   ├── package.json      ← Functions dependencies
+│   └── src/functions/
+│       ├── quote.js      ← proxies stock price calls
+│       └── stocksearch.js ← proxies search calls
+└── vite.config.ts        ← dev proxy (unchanged for local dev)
+```
+
+### The Azure Functions (v4 model)
+
+**`api/src/functions/quote.js`** — handles `/api/quote?symbol=AAPL`:
+```javascript
+const { app } = require('@azure/functions');
+
+const YAHOO_HEADERS = {
+    'Referer': 'https://finance.yahoo.com/',
+    'Origin': 'https://finance.yahoo.com',
+    'User-Agent': 'Mozilla/5.0 ...',
+};
+
+app.http('quote', {
+    methods: ['GET'],
+    authLevel: 'anonymous',
+    handler: async (request) => {
+        const symbol = request.query.get('symbol');
+        const interval = request.query.get('interval') || '1d';
+        const range = request.query.get('range') || '1d';
+
+        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=${interval}&range=${range}`;
+        const upstream = await fetch(url, { headers: YAHOO_HEADERS });
+        const body = await upstream.text();
+
+        return {
+            status: upstream.status,
+            headers: { 'Content-Type': 'application/json' },
+            body,  // pass Yahoo's response through unchanged
+        };
+    },
+});
+```
+
+**`api/src/functions/stocksearch.js`** — handles `/api/stocksearch?q=apple`:
+```javascript
+app.http('stocksearch', {
+    methods: ['GET'],
+    authLevel: 'anonymous',
+    handler: async (request) => {
+        const query = request.query.get('q');
+        const url = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=10&newsCount=0&listsCount=0`;
+        const upstream = await fetch(url, { headers: YAHOO_HEADERS });
+        const body = await upstream.text();
+        return {
+            status: upstream.status,
+            headers: { 'Content-Type': 'application/json' },
+            body,
+        };
+    },
+});
+```
+
+### `public/staticwebapp.config.json` — SPA routing
+
+```json
+{
+  "routes": [
+    { "route": "/api/*", "allowedRoles": ["anonymous"] }
+  ],
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": ["/api/*", "*.css", "*.js", "*.png", "*.svg", "*.ico"]
+  }
+}
+```
+
+This tells Azure: send all page requests to `index.html` (React handles routing), but leave `/api/*` alone for Functions.
+
+### How dev vs production works
+
+| | Development | Production (Azure) |
+|---|---|---|
+| Frontend | Vite dev server | Azure Static Web Apps |
+| API proxy | Vite proxy config | Azure Functions |
+| `/api/quote` | Vite rewrites → Yahoo | Azure Function → Yahoo |
+| Command | `npm run dev` | `git push` → auto deploy |
+
+### Deploying to Azure
+
+**Option 1: Azure Portal + GitHub (Recommended)**
+1. Go to [portal.azure.com](https://portal.azure.com)
+2. Create → Static Web App
+3. Connect your GitHub repo (`AboMSFT/stock-tracker`)
+4. Azure auto-detects Vite, sets build config
+5. Every `git push` → automatic deploy ✅
+
+**Option 2: Azure CLI**
+```bash
+az staticwebapp create \
+  --name stock-tracker \
+  --resource-group myRG \
+  --source https://github.com/AboMSFT/stock-tracker \
+  --branch master \
+  --app-location "/" \
+  --api-location "api" \
+  --output-location "dist"
+```
+
+### Cost
+
+| Service | Free tier |
+|---|---|
+| Azure Static Web Apps | ✅ Free (2 apps) |
+| Azure Functions (integrated) | ✅ Included free |
+| Custom domain + SSL | ✅ Free |
+| **Total** | **$0/month** |
+
+---
+
+## Deployment Options Comparison
+
+| Option | Effort | Cost | Backend API | Best for |
+|---|---|---|---|---|
+| Vercel / Netlify | ⭐ Easiest | Free | Needs serverless fn | Quick demos |
+| GitHub Pages | Easy | Free | ❌ No backend | Pure static apps |
+| Nginx / Apache | Medium | Server cost | ✅ Full control | Own server |
+| **Azure SWA** | Medium | **Free** | ✅ Azure Functions | **This app** |
 
 ---
 
