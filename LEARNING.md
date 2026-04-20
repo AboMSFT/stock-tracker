@@ -36,6 +36,7 @@
    - [npm](#1-npm)
    - [Vite](#2-vite)
    - [Git](#3-git)
+   - [Running on Your Phone](#4-running-on-your-phone)
 5. [Quick Reference Tables](#quick-reference-tables)
 
 ---
@@ -1156,6 +1157,46 @@ D. git status
 3. `git commit -m "..."` — save snapshot
 4. `git push` — upload to GitHub
 </details>
+
+---
+
+## 4. Running on Your Phone
+
+By default Vite only listens on `localhost` — only your computer can reach it. One config change exposes it to your whole WiFi network.
+
+### The change — `vite.config.ts`
+```typescript
+server: {
+    host: true,  // ← add this line
+    proxy: { ... }
+}
+```
+
+### What it does
+
+| Without `host: true` | With `host: true` |
+|---|---|
+| `localhost:5173` — your PC only | `localhost:5173` — your PC |
+| | `192.168.x.x:5173` — any device on same WiFi |
+
+### How to use it
+1. Start the dev server: `npm run dev`
+2. Vite prints two URLs:
+```
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: http://192.168.68.124:5173/   ← open this on your phone
+```
+3. Make sure your phone is on the **same WiFi** as your computer
+4. Type the Network URL into your phone's browser
+
+### C++ analogy
+```cpp
+// Without host: true — localhost only
+bind(sock, "127.0.0.1", 5173);
+
+// With host: true — all network interfaces
+bind(sock, "0.0.0.0", 5173);
+```
 
 ---
 
