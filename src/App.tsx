@@ -126,13 +126,13 @@ export default function App() {
           <h1 className="app-title">
             <span className="title-icon">🤑🚀</span> Inwealthment
           </h1>
-          <span className="refresh-time">
+          <button className="refresh-time" onClick={refresh} title="Refresh prices">
             {loading ? (
               <RefreshCw size={12} className="spin" />
             ) : (
-              lastRefresh.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              <><RefreshCw size={12} /> {lastRefresh.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</>
             )}
-          </span>
+          </button>
         </div>
         <div className="header-right">
           {!notifGranted && (
