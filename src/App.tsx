@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, RefreshCw, Bell } from 'lucide-react';
+import { Plus, RefreshCw, Bell, LucideDelete, CopyX } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -20,7 +20,7 @@ import { sendNotification, requestNotificationPermission } from './utils/notific
 import type { AlertEvent } from './types';
 
 export default function App() {
-  const { items, addStock, removeStock, setTargetPrice, markAlertFired, reorderStocks } = useWatchlist();
+  const { items, addStock, removeStock, setTargetPrice, markAlertFired, reorderStocks, clearAll } = useWatchlist();
   const symbols = items.map((i) => i.symbol);
   const { quotes, loading, hasFetched, error } = useStockPrices(symbols, 30000);
 
@@ -92,8 +92,9 @@ export default function App() {
       <header className="app-header">
         <div className="header-left">
           <h1 className="app-title">
-            <span className="title-icon">📈</span> Inwealthment
+            <span className="title-icon">🤑🚀</span> Inwealthment
           </h1>
+          <span>Watching {items.length} stocks</span>
           <span className="refresh-time">
             {loading ? (
               <RefreshCw size={12} className="spin" />
@@ -108,8 +109,11 @@ export default function App() {
               <Bell size={18} />
             </button>
           )}
-          <button className="add-btn" onClick={() => setShowSearch(true)} aria-label="Add stock">
+          <button className="icon-btn" onClick={() => setShowSearch(true)} aria-label="Add stock">
             <Plus size={22} />
+          </button>
+           <button className="icon-btn icon-btn--danger" onClick={clearAll} aria-label="Clear All">
+            <CopyX size={22} />
           </button>
         </div>
       </header>

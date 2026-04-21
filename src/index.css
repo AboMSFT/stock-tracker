@@ -53,9 +53,11 @@ input { font-family: inherit; color: inherit; }
 .header-right { display: flex; align-items: center; gap: 8px; }
 .notif-btn { display: flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 50%; background: var(--surface2); color: var(--alert-bg); transition: background 0.15s; }
 .notif-btn:hover { background: var(--border); }
-.add-btn { display: flex; align-items: center; justify-content: center; width: 42px; height: 42px; border-radius: 50%; background: var(--accent); color: #fff; box-shadow: 0 4px 14px rgba(108,142,255,0.35); transition: background 0.15s, transform 0.1s; }
-.add-btn:active { transform: scale(0.93); }
-.add-btn:hover { background: var(--accent-hover); }
+.icon-btn { display: flex; align-items: center; justify-content: center; width: 42px; height: 42px; border-radius: 50%; background: var(--accent); color: #fff; box-shadow: 0 4px 14px rgba(108,142,255,0.35); transition: background 0.15s, transform 0.1s; }
+.icon-btn:active { transform: scale(0.93); }
+.icon-btn:hover { background: var(--accent-hover); }
+.icon-btn--danger { background: rgba(255,77,106,0.2); color: var(--red); box-shadow: none; }
+.icon-btn--danger:hover { background: rgba(255,77,106,0.35); }
 
 /* ── Error Bar ────────────────────────────────────── */
 .error-bar { background: rgba(255,77,106,0.15); border-bottom: 1px solid rgba(255,77,106,0.3); color: var(--red); font-size: 12px; text-align: center; padding: 6px 16px; }

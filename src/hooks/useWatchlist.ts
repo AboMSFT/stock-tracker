@@ -61,6 +61,11 @@ export function useWatchlist() {
     []
   );
 
+const clearAll = useCallback(() => {
+     setItems([]);
+     saveToStorage([]);
+ }, []);
+
   const markAlertFired = useCallback((symbol: string) => {
     setItems((prev) => {
       const updated = prev.map((i) =>
@@ -83,5 +88,5 @@ export function useWatchlist() {
     });
   }, []);
 
-  return { items, addStock, removeStock, setTargetPrice, markAlertFired, reorderStocks };
+  return { items, addStock, removeStock, setTargetPrice, markAlertFired, reorderStocks, clearAll };
 }
