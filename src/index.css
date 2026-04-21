@@ -191,6 +191,13 @@ input { font-family: inherit; color: inherit; }
 .tile-drag-handle:hover { color: var(--text-secondary); background: var(--surface2); }
 .tile-drag-handle:active { cursor: grabbing; }
 
+/* ── Install Banner ───────────────────────────────── */
+.install-banner { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: rgba(108,142,255,0.12); border-bottom: 1px solid rgba(108,142,255,0.25); font-size: 13px; color: var(--text-secondary); }
+.install-banner-icon { color: var(--accent); flex-shrink: 0; }
+.install-banner-text { flex: 1; line-height: 1.4; }
+.install-banner-btn { padding: 5px 12px; border-radius: 8px; background: var(--accent); color: #fff; font-size: 12px; font-weight: 600; flex-shrink: 0; }
+.install-banner-close { display: flex; align-items: center; color: var(--text-muted); flex-shrink: 0; padding: 4px; }
+
 /* ── Pull to Refresh ──────────────────────────────── */
 .pull-indicator { display: flex; align-items: center; justify-content: center; color: var(--text-muted); overflow: hidden; }
 .pull-indicator .pull-ready { color: var(--accent); transform: rotate(180deg); transition: transform 0.2s, color 0.2s; }

@@ -15,6 +15,7 @@ import { useStockPrices } from './hooks/useStockPrices';
 import { StockTile } from './components/StockTile';
 import { SearchModal } from './components/SearchModal';
 import { AlertBanner } from './components/AlertBanner';
+import { InstallBanner } from './components/InstallBanner';
 import { playAlertSound } from './utils/audio';
 import { sendNotification, requestNotificationPermission } from './utils/notifications';
 import { formatPrice } from './utils/formatPrice';
@@ -146,6 +147,7 @@ export default function App() {
         </div>
       </header>
 
+      <InstallBanner />
       <AlertBanner alerts={activeAlerts} onDismiss={dismissAlert} />
 
       {error && <div className="error-bar">{error}</div>}
