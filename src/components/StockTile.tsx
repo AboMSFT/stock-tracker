@@ -4,6 +4,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { WatchlistItem, StockQuote } from '../types';
 import { formatPrice, formatChange } from '../utils/formatPrice';
+import { Sparkline } from './Sparkline';
 
 interface StockTileProps {
   item: WatchlistItem;
@@ -117,6 +118,10 @@ export function StockTile({ item, quote, hasFetched, onRemove, onSetTarget }: St
             </span>
           </div>
         </div>
+      )}
+
+      {quote?.sparkline && (
+        <Sparkline prices={quote.sparkline} positive={isPositive} />
       )}
 
       <div className="tile-footer">

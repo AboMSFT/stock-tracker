@@ -14,6 +14,7 @@ export interface StockQuote {
   changePercent: number;
   companyName: string;
   currency: string;
+  sparkline?: number[];
 }
 
 export interface SearchResult {

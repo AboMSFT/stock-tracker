@@ -3,17 +3,21 @@ import type { StockQuote, SearchResult } from '../types';
 async function fetchSingleQuote(symbol: string): Promise<StockQuote | null> {
   try {
     const res = await fetch(
-      `/api/quote?symbol=${encodeURIComponent(symbol)}&interval=1d&range=1d`
+      `/api/quote?symbol=${encodeURIComponent(symbol)}&interval=5m&range=1d`
     );
     if (!res.ok) return null;
     const data = await res.json();
-    const meta = data?.chart?.result?.[0]?.meta;
+    const result = data?.chart?.result?.[0];
+    const meta = result?.meta;
     if (!meta) return null;
 
     const price: number = meta.regularMarketPrice ?? 0;
     const prevClose: number = meta.chartPreviousClose ?? price;
     const change = price - prevClose;
     const changePercent = prevClose ? (change / prevClose) * 100 : 0;
+
+    const rawClose: (number | null)[] = result?.indicators?.quote?.[0]?.close ?? [];
+    const sparkline = rawClose.filter((v): v is number => v !== null && isFinite(v));
 
     return {
       symbol: meta.symbol ?? symbol,
@@ -22,6 +26,7 @@ async function fetchSingleQuote(symbol: string): Promise<StockQuote | null> {
       changePercent,
       companyName: meta.shortName ?? meta.longName ?? symbol,
       currency: meta.currency ?? 'USD',
+      sparkline: sparkline.length >= 2 ? sparkline : undefined,
     };
   } catch {
     return null;
