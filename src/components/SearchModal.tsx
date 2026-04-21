@@ -68,7 +68,6 @@ export function SearchModal({ onClose, onAdd, existingSymbols }: SearchModalProp
 
   function handleAdd(result: SearchResult) {
     onAdd(result.symbol, result.longname ?? result.shortname, result.assetType ?? 'stock');
-    onClose();
   }
 
   return (
