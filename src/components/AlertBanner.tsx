@@ -1,5 +1,6 @@
 import { X, Bell } from 'lucide-react';
 import type { AlertEvent } from '../types';
+import { formatPrice } from '../utils/formatPrice';
 
 interface AlertBannerProps {
   alerts: AlertEvent[];
@@ -17,9 +18,9 @@ export function AlertBanner({ alerts, onDismiss }: AlertBannerProps) {
           <div className="alert-content">
             <span className="alert-symbol">{alert.symbol}</span>
             <span className="alert-message">
-              Target ${alert.targetPrice.toFixed(2)} reached!
+              Target {formatPrice(alert.targetPrice)} reached!
               <br />
-              Current price: ${alert.price.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              Current price: {formatPrice(alert.price)}
             </span>
           </div>
           <button

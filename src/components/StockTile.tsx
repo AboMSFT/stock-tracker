@@ -3,6 +3,7 @@ import { X, Target, Trash2, TrendingUp, TrendingDown, GripVertical } from 'lucid
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { WatchlistItem, StockQuote } from '../types';
+import { formatPrice, formatChange } from '../utils/formatPrice';
 
 interface StockTileProps {
   item: WatchlistItem;
@@ -77,10 +78,11 @@ export function StockTile({ item, quote, hasFetched, onRemove, onSetTarget }: St
         </button>
         <div className="tile-symbol-wrap">
           <span className="tile-symbol">{item.symbol}</span>
+          {item.assetType === 'crypto' && <span className="tile-crypto-badge">CRYPTO</span>}
           {item.targetPrice !== undefined && (
             <span className={`tile-target-badge ${item.alertFired ? 'badge-fired' : ''}`}>
               <Target size={10} />
-              ${item.targetPrice.toFixed(2)}
+              {formatPrice(item.targetPrice, quote?.currency)}
             </span>
           )}
         </div>
@@ -104,13 +106,13 @@ export function StockTile({ item, quote, hasFetched, onRemove, onSetTarget }: St
       ) : (
         <div className="tile-price-section">
           <span className="tile-price">
-            ${price!.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {formatPrice(price!, quote?.currency)}
           </span>
           <div className={`tile-change ${isPositive ? 'change-positive' : 'change-negative'}`}>
             {isPositive ? <TrendingUp size={13} /> : <TrendingDown size={13} />}
             <span>
-              {isPositive ? '+' : ''}
-              {change.toFixed(2)} ({isPositive ? '+' : ''}
+              {isPositive ? '+' : '-'}
+              {formatChange(Math.abs(change), price!)} ({isPositive ? '+' : ''}
               {changePercent.toFixed(2)}%)
             </span>
           </div>
@@ -126,7 +128,7 @@ export function StockTile({ item, quote, hasFetched, onRemove, onSetTarget }: St
               className="target-input"
               type="number"
               min="0"
-              step="0.01"
+              step="any"
               placeholder="Target price"
               value={targetInput}
               onChange={(e) => setTargetInput(e.target.value)}

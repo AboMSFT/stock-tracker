@@ -45,12 +45,13 @@ export async function searchStocks(query: string): Promise<SearchResult[]> {
   const data = await res.json();
   const quotes: any[] = data?.quotes ?? [];
   return quotes
-    .filter((q) => q.quoteType === 'EQUITY' || q.quoteType === 'ETF' || q.quoteType === 'INDEX')
+    .filter((q) => ['EQUITY', 'ETF', 'INDEX', 'CRYPTOCURRENCY'].includes(q.quoteType))
     .map((q): SearchResult => ({
       symbol: q.symbol,
       shortname: q.shortname ?? q.symbol,
       longname: q.longname,
       typeDisp: q.typeDisp,
       exchDisp: q.exchDisp,
+      assetType: q.quoteType === 'CRYPTOCURRENCY' ? 'crypto' : 'stock',
     }));
 }

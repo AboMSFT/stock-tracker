@@ -5,7 +5,7 @@ import type { SearchResult } from '../types';
 
 interface SearchModalProps {
   onClose: () => void;
-  onAdd: (symbol: string, companyName: string) => void;
+  onAdd: (symbol: string, companyName: string, assetType: 'stock' | 'crypto') => void;
   existingSymbols: string[];
 }
 
@@ -67,7 +67,7 @@ export function SearchModal({ onClose, onAdd, existingSymbols }: SearchModalProp
   }, [query]);
 
   function handleAdd(result: SearchResult) {
-    onAdd(result.symbol, result.longname ?? result.shortname);
+    onAdd(result.symbol, result.longname ?? result.shortname, result.assetType ?? 'stock');
     onClose();
   }
 
@@ -76,7 +76,7 @@ export function SearchModal({ onClose, onAdd, existingSymbols }: SearchModalProp
       <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="modal-handle" />
         <div className="modal-header">
-          <h2 className="modal-title">Add Stock</h2>
+          <h2 className="modal-title">Add to Watchlist</h2>
           <button className="modal-close-btn" onClick={onClose} aria-label="Close">
             <X size={20} />
           </button>
@@ -88,7 +88,7 @@ export function SearchModal({ onClose, onAdd, existingSymbols }: SearchModalProp
             ref={inputRef}
             className="search-input"
             type="text"
-            placeholder="Search ticker or company (e.g. AAPL, Apple)"
+            placeholder="Search stock or crypto (e.g. AAPL, BTC-USD)"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />

@@ -1,6 +1,7 @@
 export interface WatchlistItem {
   symbol: string;
   companyName: string;
+  assetType?: 'stock' | 'crypto';
   targetPrice?: number;
   alertDirection?: 'above' | 'below';
   alertFired?: boolean;
@@ -21,6 +22,7 @@ export interface SearchResult {
   longname?: string;
   typeDisp?: string;
   exchDisp?: string;
+  assetType?: 'stock' | 'crypto';
 }
 
 export interface AlertEvent {

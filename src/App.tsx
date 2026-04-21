@@ -17,6 +17,7 @@ import { SearchModal } from './components/SearchModal';
 import { AlertBanner } from './components/AlertBanner';
 import { playAlertSound } from './utils/audio';
 import { sendNotification, requestNotificationPermission } from './utils/notifications';
+import { formatPrice } from './utils/formatPrice';
 import type { AlertEvent } from './types';
 
 export default function App() {
@@ -69,7 +70,7 @@ export default function App() {
         setActiveAlerts((prev) => [...prev, alertEvent]);
         sendNotification(
           `🎯 ${item.symbol} target reached!`,
-          `${item.companyName} is at $${quote.price.toFixed(2)} (target: $${item.targetPrice.toFixed(2)})`
+          `${item.companyName} is at ${formatPrice(quote.price, quote.currency)} (target: ${formatPrice(item.targetPrice, quote.currency)})`
         );
         playAlertSound();
       }
@@ -123,9 +124,9 @@ export default function App() {
           <div className="empty-state">
             <span className="empty-icon">📊</span>
             <p className="empty-title">Your watchlist is empty</p>
-            <p className="empty-sub">Tap the + button to add stocks</p>
+            <p className="empty-sub">Tap the + button to add stocks or crypto</p>
             <button className="empty-add-btn" onClick={() => setShowSearch(true)}>
-              <Plus size={16} /> Add your first stock
+              <Plus size={16} /> Add your first asset
             </button>
           </div>
         ) : (
@@ -157,7 +158,7 @@ export default function App() {
       )}
 
       <footer className="bottom-bar">
-        <span className="bottom-bar-count">Watching {items.length} stocks</span>
+        <span className="bottom-bar-count">Watching {items.length} {items.length === 1 ? 'asset' : 'assets'}</span>
         <button className="icon-btn icon-btn--danger" onClick={clearAll} aria-label="Clear All">
           <CopyX size={20} />
         </button>

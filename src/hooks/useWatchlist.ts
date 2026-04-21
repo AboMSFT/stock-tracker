@@ -20,10 +20,10 @@ function saveToStorage(items: WatchlistItem[]) {
 export function useWatchlist() {
   const [items, setItems] = useState<WatchlistItem[]>(loadFromStorage);
 
-  const addStock = useCallback((symbol: string, companyName: string) => {
+  const addStock = useCallback((symbol: string, companyName: string, assetType: 'stock' | 'crypto' = 'stock') => {
     setItems((prev) => {
       if (prev.find((i) => i.symbol === symbol)) return prev;
-      const updated = [...prev, { symbol, companyName }];
+      const updated = [...prev, { symbol, companyName, assetType }];
       saveToStorage(updated);
       return updated;
     });
