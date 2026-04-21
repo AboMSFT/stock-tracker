@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Plus, RefreshCw, Bell, CopyX } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Plus, RefreshCw, Bell, CopyX, ArrowDown } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -23,7 +23,7 @@ import type { AlertEvent } from './types';
 export default function App() {
   const { items, addStock, removeStock, setTargetPrice, markAlertFired, reorderStocks, clearAll } = useWatchlist();
   const symbols = items.map((i) => i.symbol);
-  const { quotes, loading, hasFetched, error } = useStockPrices(symbols, 30000);
+  const { quotes, loading, hasFetched, error, refresh } = useStockPrices(symbols, 30000);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -88,6 +88,37 @@ export default function App() {
     setNotifGranted(granted);
   };
 
+  // Pull-to-refresh
+  const PULL_THRESHOLD = 70;
+  const mainRef = useRef<HTMLDivElement>(null);
+  const touchStartY = useRef(0);
+  const isPulling = useRef(false);
+  const [pullDistance, setPullDistance] = useState(0);
+
+  function handleTouchStart(e: React.TouchEvent) {
+    if ((mainRef.current?.scrollTop ?? 0) === 0) {
+      touchStartY.current = e.touches[0].clientY;
+      isPulling.current = true;
+    }
+  }
+
+  function handleTouchMove(e: React.TouchEvent) {
+    if (!isPulling.current) return;
+    const delta = e.touches[0].clientY - touchStartY.current;
+    if (delta > 0) {
+      setPullDistance(Math.min(delta * 0.5, PULL_THRESHOLD));
+    } else {
+      setPullDistance(0);
+      isPulling.current = false;
+    }
+  }
+
+  function handleTouchEnd() {
+    if (pullDistance >= PULL_THRESHOLD) refresh();
+    setPullDistance(0);
+    isPulling.current = false;
+  }
+
   return (
     <div className="app">
       <header className="app-header">
@@ -119,7 +150,20 @@ export default function App() {
 
       {error && <div className="error-bar">{error}</div>}
 
-      <main className="main-content">
+      <main
+          ref={mainRef}
+          className="main-content"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
+          {pullDistance > 0 && (
+            <div className="pull-indicator" style={{ height: pullDistance }}>
+              {loading
+                ? <RefreshCw size={20} className="spin" />
+                : <ArrowDown size={20} className={pullDistance >= PULL_THRESHOLD ? 'pull-ready' : ''} />}
+            </div>
+          )}
         {items.length === 0 ? (
           <div className="empty-state">
             <span className="empty-icon">📊</span>

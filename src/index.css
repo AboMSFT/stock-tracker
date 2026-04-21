@@ -187,6 +187,11 @@ input { font-family: inherit; color: inherit; }
 .tile-drag-handle:hover { color: var(--text-secondary); background: var(--surface2); }
 .tile-drag-handle:active { cursor: grabbing; }
 
+/* ── Pull to Refresh ──────────────────────────────── */
+.pull-indicator { display: flex; align-items: center; justify-content: center; color: var(--text-muted); overflow: hidden; }
+.pull-indicator .pull-ready { color: var(--accent); transform: rotate(180deg); transition: transform 0.2s, color 0.2s; }
+.pull-indicator svg { transition: transform 0.2s, color 0.2s; }
+
 /* ── Bottom Bar ───────────────────────────────────── */
 .bottom-bar {
   position: fixed;

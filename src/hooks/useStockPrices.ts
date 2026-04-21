@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchQuotes } from '../services/stockService';
 import type { StockQuote } from '../types';
 
@@ -7,6 +7,7 @@ export function useStockPrices(symbols: string[], intervalMs = 30000) {
   const [loading, setLoading] = useState(false);
   const [hasFetched, setHasFetched] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
   const symbolsKey = symbols.join(',');
 
   useEffect(() => {
@@ -40,8 +41,10 @@ export function useStockPrices(symbols: string[], intervalMs = 30000) {
       clearInterval(id);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [symbolsKey, intervalMs]);
+  }, [symbolsKey, intervalMs, refreshKey]);
 
-  return { quotes, loading, hasFetched, error };
+  const refresh = useCallback(() => setRefreshKey((k) => k + 1), []);
+
+  return { quotes, loading, hasFetched, error, refresh };
 }
 
