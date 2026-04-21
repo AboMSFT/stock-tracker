@@ -159,7 +159,7 @@ export default function App() {
 
       <footer className="bottom-bar">
         <span className="bottom-bar-count">Watching {items.length} {items.length === 1 ? 'asset' : 'assets'}</span>
-        <button className="icon-btn icon-btn--danger" onClick={clearAll} aria-label="Clear All">
+        <button className="icon-btn icon-btn--danger" onClick={() => { if (window.confirm('Remove all assets from your watchlist?')) clearAll(); }} aria-label="Clear All">
           <CopyX size={20} />
         </button>
       </footer>
