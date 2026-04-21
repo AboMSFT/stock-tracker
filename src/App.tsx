@@ -94,7 +94,6 @@ export default function App() {
           <h1 className="app-title">
             <span className="title-icon">🤑🚀</span> Inwealthment
           </h1>
-          <span>Watching {items.length} stocks</span>
           <span className="refresh-time">
             {loading ? (
               <RefreshCw size={12} className="spin" />
@@ -111,9 +110,6 @@ export default function App() {
           )}
           <button className="icon-btn" onClick={() => setShowSearch(true)} aria-label="Add stock">
             <Plus size={22} />
-          </button>
-           <button className="icon-btn icon-btn--danger" onClick={clearAll} aria-label="Clear All">
-            <CopyX size={22} />
           </button>
         </div>
       </header>
@@ -159,6 +155,13 @@ export default function App() {
           existingSymbols={symbols}
         />
       )}
+
+      <footer className="bottom-bar">
+        <span className="bottom-bar-count">Watching {items.length} stocks</span>
+        <button className="icon-btn icon-btn--danger" onClick={clearAll} aria-label="Clear All">
+          <CopyX size={20} />
+        </button>
+      </footer>
     </div>
   );
 }
