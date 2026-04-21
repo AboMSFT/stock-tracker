@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { fetchQuotes } from '../services/stockService';
 import type { StockQuote } from '../types';
 
