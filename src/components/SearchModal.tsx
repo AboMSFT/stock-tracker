@@ -16,6 +16,26 @@ export function SearchModal({ onClose, onAdd, existingSymbols }: SearchModalProp
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
+
+  // Fix keyboard hiding modal on Chrome Android
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    function updateHeight() {
+      if (overlayRef.current) {
+        overlayRef.current.style.height = `${vv!.height}px`;
+        overlayRef.current.style.top = `${vv!.offsetTop}px`;
+      }
+    }
+    updateHeight();
+    vv.addEventListener('resize', updateHeight);
+    vv.addEventListener('scroll', updateHeight);
+    return () => {
+      vv.removeEventListener('resize', updateHeight);
+      vv.removeEventListener('scroll', updateHeight);
+    };
+  }, []);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -52,7 +72,7 @@ export function SearchModal({ onClose, onAdd, existingSymbols }: SearchModalProp
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div ref={overlayRef} className="modal-overlay" onClick={onClose}>
       <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="modal-handle" />
         <div className="modal-header">
