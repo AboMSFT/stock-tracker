@@ -1,7 +1,44 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Background -->
   <rect width="512" height="512" rx="112" fill="#0f0f14"/>
-  <polyline points="64,360 160,280 256,310 352,180 448,150"
-    fill="none" stroke="#6c8eff" stroke-width="36"
+
+  <!-- Chart area fill -->
+  <polygon points="48,400 140,318 224,338 318,218 400,148 400,420 48,420"
+    fill="rgba(108,142,255,0.08)"/>
+
+  <!-- Chart line -->
+  <polyline points="48,400 140,318 224,338 318,218 400,148"
+    fill="none" stroke="#6c8eff" stroke-width="22"
     stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="448" cy="150" r="28" fill="#00c87f"/>
+
+  <!-- Chart data-point dots -->
+  <circle cx="140" cy="318" r="10" fill="#6c8eff"/>
+  <circle cx="224" cy="338" r="10" fill="#6c8eff"/>
+  <circle cx="318" cy="218" r="10" fill="#6c8eff"/>
+
+  <!-- Glow at peak -->
+  <circle cx="400" cy="148" r="22" fill="rgba(0,200,127,0.25)"/>
+  <circle cx="400" cy="148" r="13" fill="#00c87f"/>
+
+  <!-- Rocket (pointing up-right, rotated 40deg) -->
+  <g transform="translate(418,82) rotate(40)">
+    <!-- Flame -->
+    <ellipse cx="0" cy="34" rx="9" ry="14" fill="#ff6b35" opacity="0.9"/>
+    <ellipse cx="0" cy="30" rx="5" ry="9" fill="#ffd700"/>
+    <!-- Body -->
+    <path d="M-13,22 L-13,-10 Q0,-30 13,-10 L13,22 Z" fill="#dde4ff"/>
+    <!-- Window -->
+    <circle cx="0" cy="4" r="7" fill="#6c8eff"/>
+    <circle cx="0" cy="4" r="4" fill="#1a2a6c"/>
+    <!-- Left fin -->
+    <path d="M-13,14 L-24,28 L-13,22 Z" fill="#aab4d4"/>
+    <!-- Right fin -->
+    <path d="M13,14 L24,28 L13,22 Z" fill="#aab4d4"/>
+  </g>
+
+  <!-- IW letters -->
+  <text x="256" y="490"
+    font-family="'Arial Black', Arial, sans-serif"
+    font-weight="900" font-size="112" text-anchor="middle"
+    fill="white" letter-spacing="8">IW</text>
 </svg>
