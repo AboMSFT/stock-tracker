@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, RefreshCw, Bell, LucideDelete, CopyX } from 'lucide-react';
+import { Plus, RefreshCw, Bell, CopyX } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
