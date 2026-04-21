@@ -1,7 +1,7 @@
 {
-  "name": "stock-tracker-api",
+  "name": "inwealthment-api",
   "version": "1.0.0",
-  "description": "Azure Functions API for Stock Tracker",
+  "description": "Azure Functions API for Inwealthment",
   "main": "src/functions/*.js",
   "scripts": {
     "start": "func start",

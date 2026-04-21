@@ -1,4 +1,4 @@
-# 📈 StockTracker — Documentation
+# 📈 Inwealthment — Documentation
 
 A mobile-optimized React web app for tracking US stock prices in real time with target price alerts.
 
@@ -349,7 +349,7 @@ When the user sets a **target price** on a tile:
 
 ## Persistence
 
-The watchlist is stored in `localStorage` under the key `stock-tracker-watchlist` as a JSON array of `WatchlistItem` objects.
+The watchlist is stored in `localStorage` under the key `inwealthment-watchlist` as a JSON array of `WatchlistItem` objects.
 
 ```json
 [

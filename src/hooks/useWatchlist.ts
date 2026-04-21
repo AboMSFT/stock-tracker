@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { arrayMove } from '@dnd-kit/sortable';
 import type { WatchlistItem } from '../types';
 
-const STORAGE_KEY = 'stock-tracker-watchlist';
+const STORAGE_KEY = 'inwealthment-watchlist';
 
 function loadFromStorage(): WatchlistItem[] {
   try {

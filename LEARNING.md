@@ -1,7 +1,7 @@
 # Web Development Learning Guide
 ### JavaScript · TypeScript · React · Tooling
 
-> This guide teaches the web development stack used to build the Stock Tracker app.
+> This guide teaches the web development stack used to build the Inwealthment app.
 > It assumes you know **C++ basics** and **HTML/CSS fundamentals**.
 > Each lesson includes explanations, examples, and exercises with answers.
 
@@ -1072,7 +1072,7 @@ npm run build    # production — optimized bundle in dist/
 ```
 
 ### `vite.config.ts` — app configuration
-The proxy config is critical for the stock tracker — it forwards API calls to Yahoo Finance to avoid CORS issues:
+The proxy config is critical for Inwealthment — it forwards API calls to Yahoo Finance to avoid CORS issues:
 ```typescript
 export default defineConfig({
     server: {

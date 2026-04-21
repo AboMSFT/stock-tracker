@@ -92,7 +92,7 @@ export default function App() {
       <header className="app-header">
         <div className="header-left">
           <h1 className="app-title">
-            <span className="title-icon">📈</span> StockTracker
+            <span className="title-icon">📈</span> Inwealthment
           </h1>
           <span className="refresh-time">
             {loading ? (
