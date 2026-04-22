@@ -9,5 +9,8 @@
     "build": "npm run build --workspace=packages/web",
     "build:web": "npm run build --workspace=packages/web",
     "lint:web": "npm run lint --workspace=packages/web"
+  },
+  "dependencies": {
+    "ajv": "^8.18.0"
   }
 }
