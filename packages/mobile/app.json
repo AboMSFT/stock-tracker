@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.abomsoft.inwealthment",
+      "bundleIdentifier": "com.abohoseini.inwealthment",
       "infoPlist": {
         "UIBackgroundModes": ["fetch", "remote-notification"]
       }
@@ -25,7 +25,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0f0f14"
       },
-      "package": "com.abomsoft.inwealthment"
+      "package": "com.abohoseini.inwealthment"
     },
     "plugins": [
       "expo-router",
