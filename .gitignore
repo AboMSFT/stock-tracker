@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Expo / mobile
+.expo/
+ios/
+android/
+packages/mobile/.env

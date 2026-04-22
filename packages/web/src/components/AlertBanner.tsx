@@ -1,6 +1,6 @@
 import { X, Bell } from 'lucide-react';
-import type { AlertEvent } from '../types';
-import { formatPrice } from '../utils/formatPrice';
+import type { AlertEvent } from '@inwealthment/shared';
+import { formatPrice } from '@inwealthment/shared';
 
 interface AlertBannerProps {
   alerts: AlertEvent[];

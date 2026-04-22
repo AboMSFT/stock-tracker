@@ -2,8 +2,8 @@ import { useState, useRef } from 'react';
 import { X, Target, Trash2, TrendingUp, TrendingDown, GripVertical } from 'lucide-react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import type { WatchlistItem, StockQuote } from '../types';
-import { formatPrice, formatChange } from '../utils/formatPrice';
+import type { WatchlistItem, StockQuote } from '@inwealthment/shared';
+import { formatPrice, formatChange } from '@inwealthment/shared';
 import { Sparkline } from './Sparkline';
 
 interface StockTileProps {

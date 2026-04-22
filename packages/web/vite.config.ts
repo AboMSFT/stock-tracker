@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import path from 'path'
 
 const yahooHeaders = {
   'Referer': 'https://finance.yahoo.com/',
@@ -9,6 +10,11 @@ const yahooHeaders = {
 }
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      '@inwealthment/shared': path.resolve(__dirname, '../shared/src'),
+    },
+  },
   plugins: [
     react(),
     VitePWA({

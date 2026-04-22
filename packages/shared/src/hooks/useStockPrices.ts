@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { fetchQuotes } from '../services/stockService';
+import type { StockService } from '../services/stockService';
 import type { StockQuote } from '../types';
 
-export function useStockPrices(symbols: string[], intervalMs = 30000) {
+export function useStockPrices(symbols: string[], service: StockService, intervalMs = 30000) {
   const [quotes, setQuotes] = useState<Map<string, StockQuote>>(new Map());
   const [loading, setLoading] = useState(false);
   const [hasFetched, setHasFetched] = useState(false);
@@ -17,7 +17,7 @@ export function useStockPrices(symbols: string[], intervalMs = 30000) {
     async function fetchAll() {
       setLoading(true);
       try {
-        const results = await fetchQuotes(symbols);
+        const results = await service.fetchQuotes(symbols);
         if (!cancelled) {
           setQuotes((prev) => {
             const next = new Map(prev);
@@ -47,4 +47,3 @@ export function useStockPrices(symbols: string[], intervalMs = 30000) {
 
   return { quotes, loading, hasFetched, error, refresh };
 }
-

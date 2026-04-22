@@ -10,21 +10,21 @@ import {
   type DragEndEvent,
 } from '@dnd-kit/core';
 import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable';
-import { useWatchlist } from './hooks/useWatchlist';
-import { useStockPrices } from './hooks/useStockPrices';
+import { useWatchlist, useStockPrices, formatPrice } from '@inwealthment/shared';
+import type { AlertEvent } from '@inwealthment/shared';
+import { webStorageAdapter } from './storage';
+import { stockService } from './services/stockServiceInstance';
 import { StockTile } from './components/StockTile';
 import { SearchModal } from './components/SearchModal';
 import { AlertBanner } from './components/AlertBanner';
 import { InstallBanner } from './components/InstallBanner';
 import { playAlertSound } from './utils/audio';
 import { sendNotification, requestNotificationPermission } from './utils/notifications';
-import { formatPrice } from './utils/formatPrice';
-import type { AlertEvent } from './types';
 
 export default function App() {
-  const { items, addStock, removeStock, setTargetPrice, markAlertFired, reorderStocks, clearAll } = useWatchlist();
+  const { items, addStock, removeStock, setTargetPrice, markAlertFired, reorderStocks, clearAll } = useWatchlist(webStorageAdapter);
   const symbols = items.map((i) => i.symbol);
-  const { quotes, loading, hasFetched, error, refresh } = useStockPrices(symbols, 30000);
+  const { quotes, loading, hasFetched, error, refresh } = useStockPrices(symbols, stockService, 30000);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),

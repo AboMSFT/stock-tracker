@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Search, X, Plus, Loader } from 'lucide-react';
-import { searchStocks } from '../services/stockService';
-import type { SearchResult } from '../types';
+import type { SearchResult } from '@inwealthment/shared';
+import { stockService } from '../services/stockServiceInstance';
 
 interface SearchModalProps {
   onClose: () => void;
@@ -52,7 +52,7 @@ export function SearchModal({ onClose, onAdd, existingSymbols }: SearchModalProp
       setLoading(true);
       setError(null);
       try {
-        const res = await searchStocks(query);
+        const res = await stockService.searchStocks(query);
         setResults(res);
         if (!res.length) setError('No results found.');
       } catch {

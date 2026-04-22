@@ -27,7 +27,8 @@ jobs:
           cache: 'npm'
 
       - name: Install and build
-        run: npm ci --legacy-peer-deps && npm run build
+        run: npm ci --legacy-peer-deps && npm run build:web
+        working-directory: .
 
       - name: Build And Deploy
         id: builddeploy
@@ -36,8 +37,8 @@ jobs:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_AMBITIOUS_SAND_0CDB1AA10 }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
-          app_location: "dist"
-          api_location: "api"
+          app_location: "packages/web/dist"
+          api_location: "packages/web/api"
           output_location: ""
           skip_app_build: true
 
