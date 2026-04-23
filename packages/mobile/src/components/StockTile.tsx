@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 12,
     marginBottom: 10,
-    minHeight: 170,
+    minHeight: 210,
   },
   tileAlertFired: {
     borderWidth: 1,

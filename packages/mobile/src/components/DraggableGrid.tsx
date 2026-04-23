@@ -25,8 +25,7 @@ function tileTop(idx: number, itemH: number): number {
   return V_PAD + Math.floor(idx / COLS) * (itemH + GAP);
 }
 
-// Computes the nearest grid index from the center of the dragged tile.
-// All numeric parameters must be plain numbers (worklet-safe).
+// Called from onEnd worklet — must be a worklet itself.
 function nearestIndex(centerX: number, centerY: number, itemH: number, count: number): number {
   'worklet';
   const col = Math.max(
@@ -73,7 +72,6 @@ function GridItem<T,>({
   dragOffsetX,
   dragOffsetY,
 }: GridItemProps<T>) {
-  // Capture grid position at render time — correct since drag completes before reorder re-render.
   const bx = tileLeft(index);
   const by = tileTop(index, itemH);
 
@@ -98,7 +96,6 @@ function GridItem<T,>({
         );
         draggingIndex.value = -1;
         if (toIdx !== index) {
-          // Immediate reset: re-render will place item at new position.
           dragOffsetX.value = 0;
           dragOffsetY.value = 0;
           runOnJS(onDragEnd)(index, toIdx);
@@ -107,29 +104,32 @@ function GridItem<T,>({
           dragOffsetY.value = withSpring(0);
         }
       } else {
-        // Cancelled drag — spring back to original slot.
         draggingIndex.value = -1;
         dragOffsetX.value = withSpring(0);
         dragOffsetY.value = withSpring(0);
       }
     });
 
+  // Use transform (translateX/Y) for drag movement — transforms are purely visual
+  // and don't trigger Yoga layout recalculation, unlike updating left/top.
+  // position:'absolute', left, top are static so Yoga places the item correctly
+  // from the very first layout pass.
   const animStyle = useAnimatedStyle(() => {
     const isDragging = draggingIndex.value === index;
     return {
-      position: 'absolute',
-      left: bx + (isDragging ? dragOffsetX.value : 0),
-      top: by + (isDragging ? dragOffsetY.value : 0),
-      width: TILE_W,
       zIndex: isDragging ? 100 : 1,
       opacity: isDragging ? 0.92 : 1,
-      transform: [{ scale: isDragging ? 1.05 : 1 }],
+      transform: isDragging
+        ? [{ translateX: dragOffsetX.value }, { translateY: dragOffsetY.value }, { scale: 1.05 }]
+        : [{ translateX: 0 }, { translateY: 0 }, { scale: 1 }],
     };
   });
 
   return (
     <GestureDetector gesture={gesture}>
-      <Animated.View style={animStyle}>
+      <Animated.View
+        style={[{ position: 'absolute', left: bx, top: by, width: TILE_W }, animStyle]}
+      >
         {renderItem(item)}
       </Animated.View>
     </GestureDetector>
@@ -164,11 +164,16 @@ export function DraggableGrid<T,>({
 
   return (
     <ScrollView contentContainerStyle={contentContainerStyle} refreshControl={refreshControl}>
-      {/* Invisible probe rendered off-screen to measure a single tile's natural height */}
-      {itemH === 0 && data.length > 0 && (
+      {/* Probe stays mounted so it re-measures when tile content changes height
+          (e.g. after quotes load: loading spinner → full price + sparkline). */}
+      {data.length > 0 && (
         <View
           style={{ opacity: 0, width: TILE_W, position: 'absolute', top: -9999 }}
-          onLayout={e => setItemH(e.nativeEvent.layout.height)}
+          onLayout={e => {
+            const h = Math.ceil(e.nativeEvent.layout.height);
+            if (h > 0 && h !== itemH) setItemH(h);
+          }}
+          pointerEvents="none"
         >
           {renderItem(data[0])}
         </View>
