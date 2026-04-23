@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { View, ActivityIndicator, LogBox } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, LogBox } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useAuth } from '@inwealthment/shared';
@@ -24,19 +24,29 @@ export default function RootLayout() {
     }
   }, [user, loading, segments]);
 
+  // Always render the Stack so Expo Router's navigator is always mounted.
+  // Show a full-screen overlay while auth state is resolving.
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      {loading ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="(app)" />
+        <Stack.Screen name="index" />
+      </Stack>
+      {loading && (
+        <View style={styles.loadingOverlay}>
           <ActivityIndicator color={colors.accent} size="large" />
         </View>
-      ) : (
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(auth)" />
-          <Stack.Screen name="(app)" />
-          <Stack.Screen name="index" />
-        </Stack>
       )}
     </GestureHandlerRootView>
   );
 }
+
+const styles = StyleSheet.create({
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+  },
+});

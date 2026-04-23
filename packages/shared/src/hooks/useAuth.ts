@@ -8,13 +8,19 @@ export function useAuth(adapter: AuthAdapter) {
 
   useEffect(() => {
     let mounted = true;
+    // Safety timeout: if onAuthStateChange never fires (e.g. network issue),
+    // unblock the UI after 5s so the app doesn't spin forever.
+    const timeout = setTimeout(() => {
+      if (mounted) setLoading(false);
+    }, 5000);
     const unsubscribe = adapter.onAuthStateChange((u, event) => {
       if (!mounted) return;
+      clearTimeout(timeout);
       setUser(u);
       setAuthEvent(event);
       setLoading(false);
     });
-    return () => { mounted = false; unsubscribe(); };
+    return () => { mounted = false; clearTimeout(timeout); unsubscribe(); };
   }, [adapter]);
 
   const signUp = useCallback(
