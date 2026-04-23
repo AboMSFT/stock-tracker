@@ -6,13 +6,8 @@ import { useAuth } from '@inwealthment/shared';
 import { mobileAuthAdapter } from '../src/authAdapter';
 import { colors } from '../src/theme';
 
-LogBox.ignoreLogs([
-  '[expo-av]',
-  'Expo AV has been deprecated',
-  'AsyncStorage has been extracted',
-  'Setting a timer',
-  'onAnimatedValueUpdate',
-]);
+// Belt-and-suspenders: also tell LogBox to ignore everything
+LogBox.ignoreAllLogs(true);
 
 export default function RootLayout() {
   const { user, loading } = useAuth(mobileAuthAdapter);
