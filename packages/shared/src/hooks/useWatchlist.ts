@@ -12,6 +12,7 @@ export function useWatchlist(storage: StorageAdapter, userId: string) {
   const storageKey = `inwealthment-watchlist:${userId}`;
   const [items, setItems] = useState<WatchlistItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   // Track whether a save is in-flight so we serialize writes.
   const saveRef = useRef<Promise<void>>(Promise.resolve());
 
@@ -19,9 +20,12 @@ export function useWatchlist(storage: StorageAdapter, userId: string) {
   useEffect(() => {
     setHydrated(false);
     setItems([]);
+    setLoadError(null);
     storage.getItem(storageKey).then((raw) => {
       setItems(raw ? (JSON.parse(raw) as WatchlistItem[]) : []);
       setHydrated(true);
+    }).catch((err) => {
+      setLoadError(err?.message ?? 'Failed to load watchlist');
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storageKey]);
@@ -119,5 +123,5 @@ export function useWatchlist(storage: StorageAdapter, userId: string) {
     [hydrated]
   );
 
-  return { items, hydrated, addStock, removeStock, setTargetPrice, markAlertFired, reorderStocks, reorderAll, clearAll };
+  return { items, hydrated, loadError, addStock, removeStock, setTargetPrice, markAlertFired, reorderStocks, reorderAll, clearAll };
 }

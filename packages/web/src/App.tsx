@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Plus, RefreshCw, Bell, CopyX, ArrowDown, LogOut } from 'lucide-react';
 import {
   DndContext,
@@ -10,11 +10,12 @@ import {
   type DragEndEvent,
 } from '@dnd-kit/core';
 import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable';
-import { useWatchlist, useStockPrices, formatPrice, useAuth } from '@inwealthment/shared';
+import { useWatchlist, useStockPrices, formatPrice, useAuth, createSupabaseStorageAdapter } from '@inwealthment/shared';
 import type { AlertEvent, User } from '@inwealthment/shared';
 import { webStorageAdapter } from './storage';
 import { stockService } from './services/stockServiceInstance';
 import { webAuthAdapter } from './authAdapter';
+import { supabase } from './supabase';
 import { StockTile } from './components/StockTile';
 import { SearchModal } from './components/SearchModal';
 import { AlertBanner } from './components/AlertBanner';
@@ -25,7 +26,31 @@ import { sendNotification, requestNotificationPermission } from './utils/notific
 
 export default function App() {
   const { user, loading: authLoading, authEvent, signOut, signUp, signIn, resetPassword, updatePassword } = useAuth(webAuthAdapter);
-  const { items, addStock, removeStock, setTargetPrice, markAlertFired, reorderStocks, clearAll } = useWatchlist(webStorageAdapter, user?.id ?? '');
+
+  // Supabase-backed storage – stable reference per user so useWatchlist doesn't re-save on every render.
+  const storageAdapter = useMemo(
+    () => createSupabaseStorageAdapter(supabase, user?.id ?? ''),
+    [user?.id]
+  );
+
+  // One-time migration: copy localStorage watchlist → Supabase then remove local copy.
+  useEffect(() => {
+    if (!user?.id) return;
+    const key = `inwealthment-watchlist:${user.id}`;
+    const legacy = webStorageAdapter.getItem(key);
+    if (!legacy || typeof legacy !== 'string') return;
+    supabase
+      .from('user_storage')
+      .upsert(
+        { user_id: user.id, key, value: legacy, updated_at: new Date().toISOString() },
+        { onConflict: 'user_id,key' }
+      )
+      .then(({ error }) => {
+        if (!error) localStorage.removeItem(key);
+      });
+  }, [user?.id]);
+
+  const { items, addStock, removeStock, setTargetPrice, markAlertFired, reorderStocks, clearAll } = useWatchlist(storageAdapter, user?.id ?? '');
   const symbols = items.map((i) => i.symbol);
   const { quotes, loading, hasFetched, error, refresh } = useStockPrices(symbols, stockService, 30000);
 

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,10 +9,10 @@ import {
   StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useWatchlist, useStockPrices, formatPrice } from '@inwealthment/shared';
+import { useWatchlist, useStockPrices, formatPrice, createSupabaseStorageAdapter } from '@inwealthment/shared';
 import type { AlertEvent } from '@inwealthment/shared';
 import { useAuthContext } from '../../src/AuthContext';
-import { mobileStorageAdapter } from '../../src/storage';
+import { supabase } from '../../src/supabase';
 import { stockService } from '../../src/services/stockServiceInstance';
 import { StockTile } from '../../src/components/StockTile';
 import { DraggableGrid } from '../../src/components/DraggableGrid';
@@ -25,8 +25,15 @@ import { colors } from '../../src/theme';
 
 export default function HomeScreen() {
   const { user, signOut } = useAuthContext();
+
+  // Supabase-backed storage – stable reference per user.
+  const storageAdapter = useMemo(
+    () => createSupabaseStorageAdapter(supabase, user?.id ?? ''),
+    [user?.id]
+  );
+
   const { items, hydrated, addStock, removeStock, setTargetPrice, markAlertFired, reorderAll, clearAll } =
-    useWatchlist(mobileStorageAdapter, user?.id ?? '');
+    useWatchlist(storageAdapter, user?.id ?? '');
   const symbols = items.map((i) => i.symbol);
   const { quotes, loading, hasFetched, error, refresh } = useStockPrices(symbols, stockService, 30000);
 

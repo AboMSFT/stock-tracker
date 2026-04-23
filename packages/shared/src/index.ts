@@ -5,6 +5,7 @@ export type { WatchlistItem, StockQuote, SearchResult, AlertEvent } from './type
 export type { StorageAdapter } from './storage';
 export type { StockService } from './services/stockService';
 export { createStockService } from './services/stockService';
+export { createSupabaseStorageAdapter } from './supabaseStorageAdapter';
 export { useWatchlist } from './hooks/useWatchlist';
 export { useStockPrices } from './hooks/useStockPrices';
 export { formatPrice, formatChange } from './utils/formatPrice';
