@@ -28,3 +28,5 @@ dist-ssr
 ios/
 android/
 packages/mobile/.env
+.env
+.env.local

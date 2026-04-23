@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, RefreshCw, Bell, CopyX, ArrowDown } from 'lucide-react';
+import { Plus, RefreshCw, Bell, CopyX, ArrowDown, LogOut } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -10,19 +10,22 @@ import {
   type DragEndEvent,
 } from '@dnd-kit/core';
 import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable';
-import { useWatchlist, useStockPrices, formatPrice } from '@inwealthment/shared';
-import type { AlertEvent } from '@inwealthment/shared';
+import { useWatchlist, useStockPrices, formatPrice, useAuth } from '@inwealthment/shared';
+import type { AlertEvent, User } from '@inwealthment/shared';
 import { webStorageAdapter } from './storage';
 import { stockService } from './services/stockServiceInstance';
+import { webAuthAdapter } from './authAdapter';
 import { StockTile } from './components/StockTile';
 import { SearchModal } from './components/SearchModal';
 import { AlertBanner } from './components/AlertBanner';
 import { InstallBanner } from './components/InstallBanner';
+import { AuthScreen } from './components/auth/AuthScreen';
 import { playAlertSound } from './utils/audio';
 import { sendNotification, requestNotificationPermission } from './utils/notifications';
 
 export default function App() {
-  const { items, addStock, removeStock, setTargetPrice, markAlertFired, reorderStocks, clearAll } = useWatchlist(webStorageAdapter);
+  const { user, loading, authEvent, signOut, signUp, signIn, resetPassword, updatePassword } = useAuth(webAuthAdapter);
+  const { items, addStock, removeStock, setTargetPrice, markAlertFired, reorderStocks, clearAll } = useWatchlist(webStorageAdapter, user?.id ?? '');
   const symbols = items.map((i) => i.symbol);
   const { quotes, loading, hasFetched, error, refresh } = useStockPrices(symbols, stockService, 30000);
 
@@ -120,6 +123,27 @@ export default function App() {
     isPulling.current = false;
   }
 
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100dvh', background: 'var(--bg)', color: 'var(--text-secondary)' }}>
+        Loading…
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <AuthScreen
+        onAuthenticated={(_u: User) => {}}
+        authEvent={authEvent}
+        signUp={signUp}
+        signIn={signIn}
+        resetPassword={resetPassword}
+        updatePassword={updatePassword}
+      />
+    );
+  }
+
   return (
     <div className="app">
       <header className="app-header">
@@ -141,6 +165,9 @@ export default function App() {
               <Bell size={18} />
             </button>
           )}
+          <button className="icon-btn icon-btn--ghost" onClick={signOut} aria-label="Sign out" title="Sign out" style={{ background: 'var(--surface2)' }}>
+            <LogOut size={18} />
+          </button>
           <button className="icon-btn" onClick={() => setShowSearch(true)} aria-label="Add stock">
             <Plus size={22} />
           </button>

@@ -2,28 +2,29 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import type { StorageAdapter } from '../storage';
 import type { WatchlistItem } from '../types';
 
-const STORAGE_KEY = 'inwealthment-watchlist';
-
 function arrayMove<T>(arr: T[], from: number, to: number): T[] {
   const result = [...arr];
   result.splice(to, 0, result.splice(from, 1)[0]);
   return result;
 }
 
-export function useWatchlist(storage: StorageAdapter) {
+export function useWatchlist(storage: StorageAdapter, userId: string) {
+  const storageKey = `inwealthment-watchlist:${userId}`;
   const [items, setItems] = useState<WatchlistItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
   // Track whether a save is in-flight so we serialize writes.
   const saveRef = useRef<Promise<void>>(Promise.resolve());
 
-  // Load watchlist from storage once on mount.
+  // Load watchlist from storage whenever storageKey (userId) changes.
   useEffect(() => {
-    storage.getItem(STORAGE_KEY).then((raw) => {
+    setHydrated(false);
+    setItems([]);
+    storage.getItem(storageKey).then((raw) => {
       setItems(raw ? (JSON.parse(raw) as WatchlistItem[]) : []);
       setHydrated(true);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [storageKey]);
 
   // Persist whenever items change — but only after initial hydration so we
   // never overwrite storage with the empty initial state.
@@ -31,9 +32,9 @@ export function useWatchlist(storage: StorageAdapter) {
     if (!hydrated) return;
     // Chain saves so concurrent mutations write in order (latest wins).
     saveRef.current = saveRef.current.then(() =>
-      storage.setItem(STORAGE_KEY, JSON.stringify(items))
+      storage.setItem(storageKey, JSON.stringify(items))
     );
-  }, [items, hydrated, storage]);
+  }, [items, hydrated, storage, storageKey]);
 
   const addStock = useCallback(
     (symbol: string, companyName: string, assetType: 'stock' | 'crypto' = 'stock') => {
