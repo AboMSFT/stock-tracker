@@ -1,11 +1,17 @@
 import { useEffect } from 'react';
-import { LogBox } from 'react-native';
+import { View, ActivityIndicator, LogBox } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useAuth } from '@inwealthment/shared';
 import { mobileAuthAdapter } from '../src/authAdapter';
+import { colors } from '../src/theme';
 
-LogBox.ignoreLogs(['[expo-av]']);
+LogBox.ignoreLogs([
+  '[expo-av]',
+  'Expo AV has been deprecated',
+  'AsyncStorage has been extracted',
+  'Setting a timer',
+]);
 
 export default function RootLayout() {
   const { user, loading } = useAuth(mobileAuthAdapter);
@@ -22,17 +28,19 @@ export default function RootLayout() {
     }
   }, [user, loading, segments]);
 
-  if (loading) {
-    return null;
-  }
-
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(app)" />
-        <Stack.Screen name="index" />
-      </Stack>
+      {loading ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+          <ActivityIndicator color={colors.accent} size="large" />
+        </View>
+      ) : (
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(app)" />
+          <Stack.Screen name="index" />
+        </Stack>
+      )}
     </GestureHandlerRootView>
   );
 }
