@@ -11,6 +11,7 @@ LogBox.ignoreLogs([
   'Expo AV has been deprecated',
   'AsyncStorage has been extracted',
   'Setting a timer',
+  'onAnimatedValueUpdate',
 ]);
 
 export default function RootLayout() {
