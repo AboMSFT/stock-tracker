@@ -107,5 +107,16 @@ export function useWatchlist(storage: StorageAdapter) {
     [hydrated]
   );
 
-  return { items, hydrated, addStock, removeStock, setTargetPrice, markAlertFired, reorderStocks, clearAll };
+  const reorderAll = useCallback(
+    (symbolOrder: string[]) => {
+      if (!hydrated) return;
+      setItems((prev) => {
+        const map = new Map(prev.map((i) => [i.symbol, i]));
+        return symbolOrder.map((s) => map.get(s)).filter(Boolean) as WatchlistItem[];
+      });
+    },
+    [hydrated]
+  );
+
+  return { items, hydrated, addStock, removeStock, setTargetPrice, markAlertFired, reorderStocks, reorderAll, clearAll };
 }

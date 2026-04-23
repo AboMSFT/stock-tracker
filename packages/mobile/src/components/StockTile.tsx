@@ -68,9 +68,12 @@ export function StockTile({ item, quote, hasFetched, onRemove, onSetTarget }: St
             </View>
           )}
         </View>
-        <TouchableOpacity onPress={() => onRemove(item.symbol)} hitSlop={8}>
-          <Text style={styles.removeBtn}>✕</Text>
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <Text style={styles.dragHandleText}>⠿</Text>
+          <TouchableOpacity onPress={() => onRemove(item.symbol)} hitSlop={8}>
+            <Text style={styles.removeBtn}>✕</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <Text style={styles.name} numberOfLines={1}>{item.companyName}</Text>
@@ -141,6 +144,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 12,
     marginBottom: 10,
+    minHeight: 170,
   },
   tileAlertFired: {
     borderWidth: 1,
@@ -186,6 +190,10 @@ const styles = StyleSheet.create({
   targetBadgeText: {
     color: '#93c5fd',
     fontSize: 9,
+  },
+  dragHandleText: {
+    color: '#444',
+    fontSize: 18,
   },
   removeBtn: {
     color: '#666',

@@ -2,7 +2,6 @@ import { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
-  FlatList,
   TouchableOpacity,
   StyleSheet,
   RefreshControl,
@@ -15,6 +14,7 @@ import type { AlertEvent } from '@inwealthment/shared';
 import { mobileStorageAdapter } from '../src/storage';
 import { stockService } from '../src/services/stockServiceInstance';
 import { StockTile } from '../src/components/StockTile';
+import { DraggableGrid } from '../src/components/DraggableGrid';
 import { SearchModal } from '../src/components/SearchModal';
 import { AlertBanner } from '../src/components/AlertBanner';
 import { ErrorBoundary } from '../src/components/ErrorBoundary';
@@ -23,7 +23,7 @@ import { requestNotificationPermission, sendNotification } from '../src/utils/no
 import { colors } from '../src/theme';
 
 export default function HomeScreen() {
-  const { items, hydrated, addStock, removeStock, setTargetPrice, markAlertFired, clearAll } =
+  const { items, hydrated, addStock, removeStock, setTargetPrice, markAlertFired, reorderAll, clearAll } =
     useWatchlist(mobileStorageAdapter);
   const symbols = items.map((i) => i.symbol);
   const { quotes, loading, hasFetched, error, refresh } = useStockPrices(symbols, stockService, 30000);
@@ -120,12 +120,20 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
         ) : (
-          <FlatList
+          <DraggableGrid
             data={items}
             keyExtractor={(item) => item.symbol}
-            numColumns={2}
+            renderItem={(item) => (
+              <StockTile
+                item={item}
+                quote={quotes.get(item.symbol)}
+                hasFetched={hasFetched}
+                onRemove={removeStock}
+                onSetTarget={setTargetPrice}
+              />
+            )}
+            onReorder={(newItems) => reorderAll(newItems.map((i) => i.symbol))}
             contentContainerStyle={styles.grid}
-            columnWrapperStyle={styles.row}
             refreshControl={
               <RefreshControl
                 refreshing={loading}
@@ -133,17 +141,6 @@ export default function HomeScreen() {
                 tintColor={colors.accent}
               />
             }
-            renderItem={({ item }) => (
-              <View style={styles.tileWrapper}>
-                <StockTile
-                  item={item}
-                  quote={quotes.get(item.symbol)}
-                  hasFetched={hasFetched}
-                  onRemove={removeStock}
-                  onSetTarget={setTargetPrice}
-                />
-              </View>
-            )}
           />
         )}
 
@@ -226,12 +223,6 @@ const styles = StyleSheet.create({
   },
   grid: {
     padding: 8,
-  },
-  row: {
-    gap: 8,
-  },
-  tileWrapper: {
-    flex: 1,
   },
   empty: {
     flex: 1,
