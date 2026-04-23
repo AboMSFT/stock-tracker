@@ -1537,3 +1537,780 @@ az staticwebapp create \
 | npm | `npm run build` | Build for production |
 | Vite | config | Proxy, host, build settings |
 | Git | `add → commit → push` | Save and upload changes |
+
+---
+
+# Section 7: Monorepos & npm Workspaces
+
+## 1. What is a Monorepo?
+
+A **monorepo** is a single Git repository that contains multiple packages or projects. Instead of having three separate repos (`stock-tracker-web`, `stock-tracker-mobile`, `stock-tracker-shared`), everything lives together:
+
+```
+stock-tracker/          ← one Git repo
+├── packages/
+│   ├── web/            ← React PWA
+│   ├── mobile/         ← Expo iOS app
+│   └── shared/         ← shared hooks + types
+```
+
+**Benefits:**
+- Share code between packages without publishing to npm
+- One `npm install` installs everything
+- Atomic commits across packages ("add feature X to web + mobile at once")
+
+### C++ analogy
+Like a CMake project with multiple `add_subdirectory()` targets:
+```cmake
+# CMakeLists.txt (root)
+add_subdirectory(lib/shared)   # shared library
+add_subdirectory(app/desktop)  # desktop app — links to shared
+add_subdirectory(app/mobile)   # mobile app  — links to shared
+```
+
+---
+
+## 2. npm Workspaces
+
+**npm workspaces** is npm's built-in monorepo support. You declare it in the root `package.json`:
+
+```json
+{
+  "name": "stock-tracker",
+  "private": true,
+  "workspaces": ["packages/*"]
+}
+```
+
+npm then:
+1. Installs all dependencies from all `packages/*/package.json` files
+2. Hoists shared dependencies to the root `node_modules/`
+3. Creates symlinks for local packages
+
+---
+
+## 3. How Packages Reference Each Other
+
+`packages/web/package.json` declares a dependency on the local shared package:
+
+```json
+{
+  "dependencies": {
+    "@inwealthment/shared": "*"
+  }
+}
+```
+
+npm workspaces resolves `@inwealthment/shared` to `packages/shared/` on disk — no publishing required. You import it like any npm package:
+
+```typescript
+// packages/web/src/App.tsx
+import { useWatchlist, type WatchlistItem } from '@inwealthment/shared';
+```
+
+---
+
+## 4. Running Commands
+
+From the **repo root** — runs across all workspaces:
+```bash
+npm install --legacy-peer-deps   # install everything
+npm run build --workspaces       # build all packages
+```
+
+From a **specific package** directory:
+```bash
+cd packages/web
+npx vite --host 0.0.0.0 --port 5173
+
+cd packages/mobile
+npx expo start --port 8081
+```
+
+Or target a workspace from root with `-w`:
+```bash
+npm run dev -w packages/web
+```
+
+### ✏️ Exercise
+You add a new type `PriceAlert` to `packages/shared/src/types.ts`. Which other packages can immediately use it without any publishing step?
+
+<details>
+<summary>Answer</summary>
+
+Both `packages/web` and `packages/mobile` — npm workspaces symlinks `@inwealthment/shared` directly to the local directory. Any change is immediately available on the next TypeScript compilation or bundler refresh.
+</details>
+
+---
+
+# Section 8: React Native — Primitives vs DOM
+
+## 1. No HTML Elements
+
+In React for the web you write HTML elements:
+```jsx
+<div className="tile">
+  <p>AAPL</p>
+  <span>$150.00</span>
+</div>
+```
+
+In React Native there is no DOM. You use **primitive components** from `react-native`:
+
+```jsx
+import { View, Text } from 'react-native';
+
+<View style={styles.tile}>
+  <Text style={styles.symbol}>AAPL</Text>
+  <Text style={styles.price}>$150.00</Text>
+</View>
+```
+
+| Web (HTML) | React Native | Notes |
+|---|---|---|
+| `<div>` | `<View>` | layout container |
+| `<p>`, `<span>`, `<h1>` | `<Text>` | all text uses `<Text>` |
+| `<img>` | `<Image>` | requires `source` prop |
+| `<button>` | `<TouchableOpacity>` | touchable wrapper |
+| `<input>` | `<TextInput>` | text input field |
+| `<ul>` / `<li>` | `<FlatList>` | virtualized list |
+| `<div style="overflow: scroll">` | `<ScrollView>` | scrollable container |
+
+---
+
+## 2. No CSS Files — StyleSheet.create
+
+There are no `.css` files in React Native. Styles are JavaScript objects:
+
+```typescript
+import { StyleSheet, View, Text } from 'react-native';
+
+export function StockTile() {
+  return (
+    <View style={styles.tile}>
+      <Text style={styles.symbol}>AAPL</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  tile: {
+    backgroundColor: '#1a1a2e',
+    borderRadius: 12,
+    padding: 12,
+  },
+  symbol: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+});
+```
+
+Properties are the same as CSS but in **camelCase**: `backgroundColor`, `borderRadius`, `fontSize`. `StyleSheet.create` validates the object at startup and optimises style IDs.
+
+---
+
+## 3. Flexbox Defaults
+
+React Native uses Flexbox for layout — but with a different default:
+
+| Property | Web default | React Native default |
+|---|---|---|
+| `flexDirection` | `row` | **`column`** |
+| `alignItems` | `stretch` | `stretch` |
+| `position` | `static` | `relative` |
+
+So in React Native, children stack **vertically** by default. To lay them out horizontally:
+```jsx
+<View style={{ flexDirection: 'row' }}>
+  <Text>Left</Text>
+  <Text>Right</Text>
+</View>
+```
+
+---
+
+## 4. TouchableOpacity vs button
+
+```jsx
+// Web
+<button onClick={() => remove(symbol)}>Remove</button>
+
+// React Native
+import { TouchableOpacity } from 'react-native';
+
+<TouchableOpacity onPress={() => remove(symbol)} activeOpacity={0.7}>
+  <Text>Remove</Text>
+</TouchableOpacity>
+```
+
+`activeOpacity` dims the element while pressed (0 = invisible, 1 = no change). For modern React Native you can also use `Pressable` for more control.
+
+---
+
+## 5. Platform-Specific Code
+
+```typescript
+import { Platform } from 'react-native';
+
+const statusBarHeight = Platform.OS === 'ios' ? 44 : 24;
+
+const styles = StyleSheet.create({
+  header: {
+    paddingTop: Platform.select({ ios: 44, android: 24, default: 0 }),
+  },
+});
+```
+
+### C++ analogy
+Like writing Qt widgets vs HTML — same layout concepts (flexbox ≈ QHBoxLayout/QVBoxLayout), same event concepts (onPress ≈ QPushButton::clicked), but completely different API surface.
+
+### ✏️ Exercise
+Convert this web component to React Native:
+```jsx
+<div style={{ display: 'flex', flexDirection: 'row', gap: 8 }}>
+  <span style={{ color: 'green', fontWeight: 'bold' }}>+2.5%</span>
+</div>
+```
+
+<details>
+<summary>Answer</summary>
+
+```jsx
+import { View, Text, StyleSheet } from 'react-native';
+
+<View style={styles.row}>
+  <Text style={styles.gain}>+2.5%</Text>
+</View>
+
+const styles = StyleSheet.create({
+  row: { flexDirection: 'row', gap: 8 },
+  gain: { color: 'green', fontWeight: 'bold' },
+});
+```
+
+Note: `gap` is supported in React Native 0.71+. For older versions, use `marginRight` instead.
+</details>
+
+---
+
+# Section 9: Expo & Metro
+
+## 1. What is Expo?
+
+**Expo** is a toolchain and SDK built on top of React Native. It provides:
+- Pre-built native modules (camera, notifications, filesystem, etc.)
+- A managed build service (EAS Build) — optional
+- A development client with fast refresh
+- File-based routing via **Expo Router**
+
+Think of Expo as "Create React App for React Native" — it handles the native build configuration so you don't have to write Swift or Kotlin.
+
+This app uses **Expo SDK 53** in a "bare workflow" — meaning the `ios/` Xcode project is exposed and editable (unlike the managed workflow where Expo owns it).
+
+---
+
+## 2. Expo Router
+
+**Expo Router** brings file-based routing to React Native — just like Next.js does for the web.
+
+| File | Route | Equivalent |
+|---|---|---|
+| `app/index.tsx` | `/` (home screen) | `pages/index.tsx` in Next.js |
+| `app/_layout.tsx` | Root layout wrapper | `app/layout.tsx` in Next.js |
+| `app/settings.tsx` | `/settings` screen | `pages/settings.tsx` in Next.js |
+
+```typescript
+// app/_layout.tsx — wraps every screen
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { Stack } from 'expo-router';
+
+export default function RootLayout() {
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <Stack screenOptions={{ headerShown: false }} />
+    </GestureHandlerRootView>
+  );
+}
+```
+
+```typescript
+// app/index.tsx — the home screen
+export default function HomeScreen() {
+  return <WatchlistGrid />;
+}
+```
+
+---
+
+## 3. Metro Bundler
+
+**Metro** is React Native's equivalent of Vite. It:
+- Bundles JavaScript and TypeScript files
+- Resolves module imports
+- Watches files and sends updates to the device via Fast Refresh
+
+In a monorepo, Metro needs extra configuration to find modules in sibling packages:
+
+```js
+// packages/mobile/metro.config.js
+const { getDefaultConfig } = require('expo/metro-config');
+const config = getDefaultConfig(__dirname);
+
+// Don't look up directory tree past packages/mobile for node_modules
+// This prevents React from being loaded twice (once from shared, once from mobile)
+config.resolver.disableHierarchicalLookup = true;
+
+module.exports = config;
+```
+
+### Metro vs Vite
+
+| Feature | Vite (web) | Metro (mobile) |
+|---|---|---|
+| Dev server port | 5173 | 8081 |
+| Hot reload | Vite HMR | Fast Refresh |
+| Bundled output | `dist/` | in-memory (sent to device) |
+| Config file | `vite.config.ts` | `metro.config.js` |
+
+---
+
+## 4. Starting the Dev Server
+
+```bash
+cd packages/mobile
+npx expo start --port 8081
+```
+
+This prints a QR code. Options:
+- **Expo Go app** (scan QR) — limited to Expo SDK APIs only
+- **Development build** — your own native app with Expo dev client; required when using custom native modules (like RNGH)
+- **Physical device with Xcode build** — full native build installed directly
+
+---
+
+## 5. Physical Device Testing
+
+After building with Xcode (`Product → Run`), launch the app on a connected device:
+
+```bash
+xcrun devicectl device process launch --device 00008140-001A0DD82242801C com.abohoseini.inwealthment
+```
+
+The Metro server running on port 8081 serves the JS bundle to the app over your local network.
+
+### ✏️ Exercise
+You add a new screen `app/portfolio.tsx`. How does Expo Router make it accessible as a screen in the app?
+
+<details>
+<summary>Answer</summary>
+
+Automatically — Expo Router scans the `app/` directory and creates a route for every file. `app/portfolio.tsx` becomes the `/portfolio` route. You navigate to it with `router.push('/portfolio')` from `expo-router`. No route registration required.
+</details>
+
+---
+
+# Section 10: React Native Reanimated & Gesture Handler
+
+## 1. Why Not CSS Transitions?
+
+In the browser, CSS transitions run on the compositor thread — separate from JavaScript. In React Native, the default animation API (`Animated`) runs on the JavaScript thread, which also handles all React rendering. If JS is busy (re-rendering, fetching), animations stutter.
+
+**React Native Reanimated** solves this by running animations on the **UI thread** (native, not JS), giving smooth 60/120 fps animations even when JS is busy.
+
+### C++ analogy
+| Concept | C++ equivalent |
+|---|---|
+| JS thread | Game logic thread |
+| UI thread | Rendering/compositor thread |
+| `useSharedValue` | Thread-safe atomic variable |
+| `'worklet'` directive | Function compiled to run on rendering thread |
+
+---
+
+## 2. useSharedValue
+
+Like `useRef` but synced between JS and UI threads:
+
+```typescript
+import { useSharedValue } from 'react-native-reanimated';
+
+const offsetX = useSharedValue(0);  // starts at 0
+const offsetY = useSharedValue(0);
+
+// Update from JS thread (e.g. on gesture)
+offsetX.value = 100;
+
+// Update with animation
+import { withSpring } from 'react-native-reanimated';
+offsetX.value = withSpring(0);  // spring back to 0
+```
+
+---
+
+## 3. useAnimatedStyle
+
+Computes styles **on the UI thread** based on shared values:
+
+```typescript
+import { useAnimatedStyle } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
+
+const animatedStyle = useAnimatedStyle(() => ({
+  transform: [
+    { translateX: offsetX.value },
+    { translateY: offsetY.value },
+  ],
+}));
+
+// Use Animated.View instead of View
+<Animated.View style={[styles.tile, animatedStyle]}>
+  ...
+</Animated.View>
+```
+
+The callback runs on the UI thread every frame — never on JS.
+
+---
+
+## 4. 'worklet' Directive
+
+When a function needs to run on the UI thread (e.g. called from `useAnimatedStyle` or gesture handlers):
+
+```typescript
+function clamp(value: number, min: number, max: number): number {
+  'worklet';  // ← tells Reanimated to compile this for the UI thread
+  return Math.min(Math.max(value, min), max);
+}
+```
+
+Without `'worklet'`, calling this from `useAnimatedStyle` would crash because the UI thread can't call regular JS functions.
+
+---
+
+## 5. Gesture Handler
+
+**React Native Gesture Handler** (RNGH) replaces React Native's built-in touch system with native gesture recognisers. This is required for:
+- Simultaneous gestures (pan + pinch)
+- Gestures inside scroll views
+- Long-press-then-drag
+
+```typescript
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+
+const panGesture = Gesture.Pan()
+  .activateAfterLongPress(300)          // wait 300 ms before drag starts
+  .onUpdate((event) => {
+    'worklet';
+    offsetX.value = event.translationX;
+    offsetY.value = event.translationY;
+  })
+  .onEnd(() => {
+    'worklet';
+    offsetX.value = withSpring(0);      // snap back (or recalculate position)
+    offsetY.value = withSpring(0);
+  });
+
+<GestureDetector gesture={panGesture}>
+  <Animated.View style={[styles.tile, animatedStyle]}>
+    ...
+  </Animated.View>
+</GestureDetector>
+```
+
+`GestureHandlerRootView` must wrap the entire app (done in `app/_layout.tsx`):
+```tsx
+<GestureHandlerRootView style={{ flex: 1 }}>
+  <Stack />
+</GestureHandlerRootView>
+```
+
+---
+
+## 6. The Key Insight: transform vs left/top
+
+When dragging a tile, you have two options:
+
+```typescript
+// ❌ Bad — updates left/top
+const badStyle = useAnimatedStyle(() => ({
+  left: offsetX.value,
+  top: offsetY.value,
+}));
+```
+
+```typescript
+// ✅ Good — uses transform
+const goodStyle = useAnimatedStyle(() => ({
+  transform: [
+    { translateX: offsetX.value },
+    { translateY: offsetY.value },
+  ],
+}));
+```
+
+**Why?** `left`/`top` are **layout properties** — changing them forces Yoga (React Native's layout engine) to recalculate every sibling's size and position on each frame. That's O(N) layout work per frame.
+
+`transform` is a **rendering property** — it's applied after layout, directly on the GPU. Yoga never runs. The tile visually moves while siblings stay exactly where they are.
+
+### ✏️ Exercise
+Why does `DraggableGrid` use an always-on height probe instead of measuring tile height after the first render?
+
+<details>
+<summary>Answer</summary>
+
+Because the grid needs to know the tile height **before** it can calculate where each tile should be positioned in the grid. If it waited for the first render, there would be a frame where tiles are rendered at position 0 (or incorrectly), causing a visible layout jump. The height probe renders a single invisible tile off-screen, measures it, and stores the height — then the real grid renders at the correct positions from the first frame.
+</details>
+
+---
+
+# Section 11: Platform-Agnostic Code Patterns
+
+## 1. The Problem
+
+```typescript
+// This works in the browser:
+localStorage.setItem('key', 'value');
+
+// This crashes in React Native — localStorage does not exist:
+localStorage.setItem('key', 'value');  // ❌ ReferenceError
+```
+
+```typescript
+// This works in React Native:
+import AsyncStorage from '@react-native-async-storage/async-storage';
+await AsyncStorage.setItem('key', 'value');
+
+// This crashes in the browser — AsyncStorage is not available:
+import AsyncStorage from '@react-native-async-storage/async-storage';  // ❌
+```
+
+If you put platform-specific code in the shared `useWatchlist` hook, it will break on one platform or the other.
+
+---
+
+## 2. Solution: Interface + Dependency Injection
+
+Define an **interface** that both platforms implement:
+
+```typescript
+// packages/shared/src/storage.ts
+export interface StorageAdapter {
+  getItem(key: string): Promise<string | null>;
+  setItem(key: string, value: string): Promise<void>;
+}
+```
+
+Write the hook to accept the adapter as a parameter:
+
+```typescript
+// packages/shared/src/hooks/useWatchlist.ts
+export function useWatchlist(storage: StorageAdapter) {
+  const load = async () => {
+    const raw = await storage.getItem('inwealthment-watchlist');
+    return raw ? JSON.parse(raw) : [];
+  };
+
+  const save = async (items: WatchlistItem[]) => {
+    await storage.setItem('inwealthment-watchlist', JSON.stringify(items));
+  };
+
+  // ... rest of hook
+}
+```
+
+Each platform provides its own concrete implementation:
+
+```typescript
+// packages/web/src/storage.ts
+import type { StorageAdapter } from '@inwealthment/shared';
+
+export const localStorageAdapter: StorageAdapter = {
+  getItem: async (key) => localStorage.getItem(key),
+  setItem: async (key, value) => localStorage.setItem(key, value),
+};
+```
+
+```typescript
+// packages/mobile/src/storage.ts
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { StorageAdapter } from '@inwealthment/shared';
+
+export const asyncStorageAdapter: StorageAdapter = {
+  getItem: (key) => AsyncStorage.getItem(key),
+  setItem: (key, value) => AsyncStorage.setItem(key, value),
+};
+```
+
+Each app passes its adapter in:
+```typescript
+// Web App.tsx
+const { items, addStock } = useWatchlist(localStorageAdapter);
+
+// Mobile index.tsx
+const { items, addStock } = useWatchlist(asyncStorageAdapter);
+```
+
+---
+
+## 3. C++ Analogy
+
+This is **dependency injection via pure virtual interface**:
+
+```cpp
+// Interface (abstract base class)
+class StorageAdapter {
+public:
+    virtual std::optional<std::string> getItem(const std::string& key) = 0;
+    virtual void setItem(const std::string& key, const std::string& value) = 0;
+    virtual ~StorageAdapter() = default;
+};
+
+// Web implementation
+class LocalStorageAdapter : public StorageAdapter {
+public:
+    std::optional<std::string> getItem(const std::string& key) override { ... }
+    void setItem(const std::string& key, const std::string& value) override { ... }
+};
+
+// Mobile implementation
+class AsyncStorageAdapter : public StorageAdapter {
+public:
+    std::optional<std::string> getItem(const std::string& key) override { ... }
+    void setItem(const std::string& key, const std::string& value) override { ... }
+};
+
+// Shared hook — works with any implementation
+void useWatchlist(StorageAdapter& storage) {
+    auto raw = storage.getItem("inwealthment-watchlist");
+    ...
+}
+```
+
+The `useWatchlist` hook is the function that accepts a `StorageAdapter&` — it never knows whether it's talking to a browser or a phone.
+
+---
+
+## 4. When to Use This Pattern
+
+Use the StorageAdapter / dependency injection pattern whenever:
+- A feature needs to work on multiple platforms
+- The platform APIs differ but the *behaviour* is the same
+- You want to test the shared logic with a mock implementation
+
+```typescript
+// Easy to test with an in-memory adapter:
+const mockAdapter: StorageAdapter = {
+  getItem: async (key) => memStore[key] ?? null,
+  setItem: async (key, value) => { memStore[key] = value; },
+};
+
+const { addStock, items } = useWatchlist(mockAdapter);
+```
+
+### ✏️ Exercise
+You want to add an analytics event every time a stock is added to the watchlist. You want to send to `window.gtag` on web and `Analytics.logEvent` from Expo on mobile. Design the interface.
+
+<details>
+<summary>Answer</summary>
+
+```typescript
+// packages/shared/src/analytics.ts
+export interface AnalyticsAdapter {
+  logEvent(name: string, params?: Record<string, unknown>): void;
+}
+```
+
+```typescript
+// packages/web/src/analytics.ts
+export const webAnalyticsAdapter: AnalyticsAdapter = {
+  logEvent: (name, params) => window.gtag?.('event', name, params),
+};
+```
+
+```typescript
+// packages/mobile/src/analytics.ts
+import * as Analytics from 'expo-firebase-analytics';
+export const mobileAnalyticsAdapter: AnalyticsAdapter = {
+  logEvent: (name, params) => Analytics.logEvent(name, params),
+};
+```
+
+Pass `AnalyticsAdapter` into `useWatchlist` alongside `StorageAdapter`, or create a separate `useAnalytics` hook.
+</details>
+
+---
+
+# Quick Reference Tables (updated)
+
+## JavaScript
+| Concept | Syntax | C++ equivalent |
+|---|---|---|
+| Arrow function | `(x) => x * 2` | `[](auto x){ return x*2; }` |
+| `const` | can't reassign | `const` |
+| `let` | can reassign | regular variable |
+| `async`/`await` | pause inside fn, caller runs | `std::future` |
+| `fetch` | `await fetch(url)` + `await res.json()` | libcurl |
+| Destructuring | `const { a, b } = obj` | — |
+| Template literal | `` `Hello ${name}` `` | `fmt::format` |
+| Spread | `{ ...obj, key: val }` | copy + override |
+| Optional chaining | `a?.b?.c` | null pointer chain |
+| Nullish coalescing | `val ?? "default"` | ternary null check |
+| `Promise.allSettled` | parallel fetches | `std::async` × N |
+| `.map()` | transform array | `std::transform` |
+| `.filter()` | filter array | `std::copy_if` |
+
+## TypeScript
+| Concept | Syntax | C++ equivalent |
+|---|---|---|
+| Number | `number` | `int`, `double`, `float` |
+| String | `string` | `std::string` |
+| Boolean | `boolean` | `bool` |
+| Array | `string[]` | `std::vector<std::string>` |
+| Interface | `interface Foo { x: number }` | `struct Foo { int x; }` |
+| Optional field | `name?: string` | `std::optional<string>` |
+| Return type | `(): string` | `string func()` |
+| Union type | `"a" \| "b"` | enum |
+| Generic | `function f<T>(x: T): T` | `template<typename T>` |
+| Map | `Map<string, Value>` | `std::unordered_map` |
+
+## React
+| Concept | Purpose |
+|---|---|
+| Component | Function returning JSX — capital name, one root |
+| Props | Data passed in — like function arguments |
+| `useState` | Remember values — update triggers re-render |
+| `useEffect` | Run code on load or when dependencies change |
+| `key` prop | Unique ID for list items |
+| `&&` | Conditional — show or nothing |
+| Ternary `? :` | Conditional — one or the other |
+
+## React Native
+| Concept | Web equivalent | Notes |
+|---|---|---|
+| `<View>` | `<div>` | layout container |
+| `<Text>` | `<p>`, `<span>`, `<h1>` | all text nodes |
+| `<Image>` | `<img>` | requires `source={{ uri }}` |
+| `<TouchableOpacity>` | `<button>` | `onPress` not `onClick` |
+| `<TextInput>` | `<input>` | `onChangeText` not `onChange` |
+| `<ScrollView>` | `overflow: scroll` | full-page scroll |
+| `<FlatList>` | `<ul>` | virtualized, use for long lists |
+| `StyleSheet.create` | CSS file | camelCase properties |
+| `flexDirection: 'column'` | default is `row` in CSS | RN default is column |
+| `Platform.OS` | — | `'ios'` \| `'android'` \| `'web'` |
+| `useSharedValue` | CSS custom property (runtime) | synced to UI thread |
+| `useAnimatedStyle` | CSS transition | runs on UI thread, not JS |
+| `'worklet'` | — | compile fn for UI thread |
+
+## Tooling
+| Tool | Command | Purpose |
+|---|---|---|
+| npm | `npm install --legacy-peer-deps` | Download all workspace dependencies |
+| npm | `npm run dev` | Start web dev server |
+| npm | `npm run build` | Build web for production |
+| Vite | config | Proxy, host, build settings |
+| Metro | `npx expo start` | Start mobile bundler |
+| Expo | `npx expo start --port 8081` | Mobile dev server |
+| xcrun | `xcrun devicectl device process launch` | Launch on physical device |
+| Git | `add → commit → push` | Save and upload changes |
