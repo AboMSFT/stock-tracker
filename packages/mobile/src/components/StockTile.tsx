@@ -143,7 +143,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#1a1a24',
     borderRadius: 12,
     padding: 12,
-    marginBottom: 10,
     minHeight: 210,
   },
   tileAlertFired: {

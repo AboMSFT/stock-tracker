@@ -221,9 +221,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
   },
-  grid: {
-    padding: 8,
-  },
+  grid: {},
   empty: {
     flex: 1,
     justifyContent: 'center',

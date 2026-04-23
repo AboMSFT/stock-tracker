@@ -11,18 +11,16 @@ import Animated, {
 } from 'react-native-reanimated';
 
 const COLS = 2;
-const H_PAD = 12;
-const V_PAD = 8;
-const GAP = 8;
+const SPACING = 12; // equal gap on all sides: left edge, right edge, between columns, between rows
 const SCREEN_W = Dimensions.get('window').width;
-export const TILE_W = (SCREEN_W - H_PAD * 2 - GAP * (COLS - 1)) / COLS;
+export const TILE_W = (SCREEN_W - SPACING * (COLS + 1)) / COLS;
 
 function tileLeft(idx: number): number {
-  return H_PAD + (idx % COLS) * (TILE_W + GAP);
+  return SPACING + (idx % COLS) * (TILE_W + SPACING);
 }
 
 function tileTop(idx: number, itemH: number): number {
-  return V_PAD + Math.floor(idx / COLS) * (itemH + GAP);
+  return SPACING + Math.floor(idx / COLS) * (itemH + SPACING);
 }
 
 // Called from onEnd worklet — must be a worklet itself.
@@ -30,12 +28,12 @@ function nearestIndex(centerX: number, centerY: number, itemH: number, count: nu
   'worklet';
   const col = Math.max(
     0,
-    Math.min(COLS - 1, Math.round((centerX - H_PAD - TILE_W / 2) / (TILE_W + GAP))),
+    Math.min(COLS - 1, Math.round((centerX - SPACING - TILE_W / 2) / (TILE_W + SPACING))),
   );
   const maxRow = Math.ceil(count / COLS) - 1;
   const row = Math.max(
     0,
-    Math.min(maxRow, Math.round((centerY - V_PAD - itemH / 2) / (itemH + GAP))),
+    Math.min(maxRow, Math.round((centerY - SPACING - itemH / 2) / (itemH + SPACING))),
   );
   return Math.min(count - 1, row * COLS + col);
 }
@@ -160,7 +158,7 @@ export function DraggableGrid<T,>({
   );
 
   const numRows = Math.ceil(data.length / COLS);
-  const gridH = itemH > 0 ? V_PAD * 2 + numRows * itemH + (numRows - 1) * GAP : 0;
+  const gridH = itemH > 0 ? SPACING * (numRows + 1) + numRows * itemH : 0;
 
   return (
     <ScrollView contentContainerStyle={contentContainerStyle} refreshControl={refreshControl}>
