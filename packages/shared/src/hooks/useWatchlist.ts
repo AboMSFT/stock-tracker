@@ -15,14 +15,19 @@ export function useWatchlist(storage: StorageAdapter, userId: string) {
   const [loadError, setLoadError] = useState<string | null>(null);
   // Track whether a save is in-flight so we serialize writes.
   const saveRef = useRef<Promise<void>>(Promise.resolve());
+  // Track which storageKey has been fully hydrated — prevents save effect from
+  // firing with stale hydrated=true when storageKey or storage changes.
+  const hydratedKeyRef = useRef<string | null>(null);
 
   // Load watchlist from storage whenever storageKey (userId) changes.
   useEffect(() => {
     setHydrated(false);
     setItems([]);
     setLoadError(null);
+    hydratedKeyRef.current = null;
     storage.getItem(storageKey).then((raw) => {
       setItems(raw ? (JSON.parse(raw) as WatchlistItem[]) : []);
+      hydratedKeyRef.current = storageKey;
       setHydrated(true);
     }).catch((err) => {
       setLoadError(err?.message ?? 'Failed to load watchlist');
@@ -33,7 +38,9 @@ export function useWatchlist(storage: StorageAdapter, userId: string) {
   // Persist whenever items change — but only after initial hydration so we
   // never overwrite storage with the empty initial state.
   useEffect(() => {
-    if (!hydrated) return;
+    // Guard: only save after THIS key has been hydrated (prevents race where
+    // save fires with stale hydrated=true when storageKey/storage change).
+    if (!hydrated || hydratedKeyRef.current !== storageKey) return;
     // Chain saves so concurrent mutations write in order (latest wins).
     saveRef.current = saveRef.current.then(() =>
       storage.setItem(storageKey, JSON.stringify(items))

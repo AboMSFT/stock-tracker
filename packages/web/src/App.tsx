@@ -12,7 +12,6 @@ import {
 import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable';
 import { useWatchlist, useStockPrices, formatPrice, useAuth, createSupabaseStorageAdapter } from '@inwealthment/shared';
 import type { AlertEvent, User } from '@inwealthment/shared';
-import { webStorageAdapter } from './storage';
 import { stockService } from './services/stockServiceInstance';
 import { webAuthAdapter } from './authAdapter';
 import { supabase } from './supabase';
@@ -37,12 +36,12 @@ export default function App() {
   useEffect(() => {
     if (!user?.id) return;
     const key = `inwealthment-watchlist:${user.id}`;
-    const legacy = webStorageAdapter.getItem(key);
-    if (!legacy || typeof legacy !== 'string') return;
+    const legacyRaw = localStorage.getItem(key);
+    if (!legacyRaw) return;
     supabase
       .from('user_storage')
       .upsert(
-        { user_id: user.id, key, value: legacy, updated_at: new Date().toISOString() },
+        { user_id: user.id, key, value: legacyRaw, updated_at: new Date().toISOString() },
         { onConflict: 'user_id,key' }
       )
       .then(({ error }) => {
