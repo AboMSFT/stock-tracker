@@ -24,7 +24,7 @@ import { playAlertSound } from './utils/audio';
 import { sendNotification, requestNotificationPermission } from './utils/notifications';
 
 export default function App() {
-  const { user, loading, authEvent, signOut, signUp, signIn, resetPassword, updatePassword } = useAuth(webAuthAdapter);
+  const { user, loading: authLoading, authEvent, signOut, signUp, signIn, resetPassword, updatePassword } = useAuth(webAuthAdapter);
   const { items, addStock, removeStock, setTargetPrice, markAlertFired, reorderStocks, clearAll } = useWatchlist(webStorageAdapter, user?.id ?? '');
   const symbols = items.map((i) => i.symbol);
   const { quotes, loading, hasFetched, error, refresh } = useStockPrices(symbols, stockService, 30000);
@@ -123,7 +123,7 @@ export default function App() {
     isPulling.current = false;
   }
 
-  if (loading) {
+  if (authLoading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100dvh', background: 'var(--bg)', color: 'var(--text-secondary)' }}>
         Loading…
