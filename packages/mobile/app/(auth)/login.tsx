@@ -5,13 +5,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useAuth } from '@inwealthment/shared';
 import { mobileAuthAdapter } from '../../src/authAdapter';
 import { colors } from '../../src/theme';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { signIn } = useAuth(mobileAuthAdapter);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +19,7 @@ export default function LoginScreen() {
     if (!email || !password) { setError('Please fill in all fields'); return; }
     setLoading(true);
     setError(null);
-    const { error: err } = await signIn(email, password);
+    const { error: err } = await mobileAuthAdapter.signIn(email, password);
     setLoading(false);
     if (err) setError(err);
     // navigation handled by _layout.tsx auth guard

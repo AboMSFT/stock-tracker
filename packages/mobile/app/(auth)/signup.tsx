@@ -5,13 +5,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useAuth } from '@inwealthment/shared';
 import { mobileAuthAdapter } from '../../src/authAdapter';
 import { colors } from '../../src/theme';
 
 export default function SignupScreen() {
   const router = useRouter();
-  const { signUp } = useAuth(mobileAuthAdapter);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -24,7 +22,7 @@ export default function SignupScreen() {
     if (password !== confirmPassword) { setError('Passwords do not match'); return; }
     setLoading(true);
     setError(null);
-    const { error: err } = await signUp(email, password);
+    const { error: err } = await mobileAuthAdapter.signUp(email, password);
     setLoading(false);
     if (err) { setError(err); return; }
     setSuccess('Check your email to confirm your account.');

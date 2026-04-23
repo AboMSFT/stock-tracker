@@ -5,13 +5,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useAuth } from '@inwealthment/shared';
 import { mobileAuthAdapter } from '../../src/authAdapter';
 import { colors } from '../../src/theme';
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
-  const { resetPassword } = useAuth(mobileAuthAdapter);
   const [email, setEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -21,7 +19,7 @@ export default function ForgotPasswordScreen() {
     if (!email) { setError('Please enter your email'); return; }
     setLoading(true);
     setError(null);
-    const { error: err } = await resetPassword(email, 'https://zcpkjqbxqfvuxgosossc.supabase.co');
+    const { error: err } = await mobileAuthAdapter.resetPassword(email, 'https://zcpkjqbxqfvuxgosossc.supabase.co');
     setLoading(false);
     if (err) { setError(err); return; }
     setSuccess('Password reset link sent! Check your email.');

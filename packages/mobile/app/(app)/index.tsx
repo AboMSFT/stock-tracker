@@ -9,11 +9,11 @@ import {
   StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useWatchlist, useStockPrices, formatPrice, useAuth } from '@inwealthment/shared';
+import { useWatchlist, useStockPrices, formatPrice } from '@inwealthment/shared';
 import type { AlertEvent } from '@inwealthment/shared';
+import { useAuthContext } from '../../src/AuthContext';
 import { mobileStorageAdapter } from '../../src/storage';
 import { stockService } from '../../src/services/stockServiceInstance';
-import { mobileAuthAdapter } from '../../src/authAdapter';
 import { StockTile } from '../../src/components/StockTile';
 import { DraggableGrid } from '../../src/components/DraggableGrid';
 import { SearchModal } from '../../src/components/SearchModal';
@@ -24,7 +24,7 @@ import { requestNotificationPermission, sendNotification } from '../../src/utils
 import { colors } from '../../src/theme';
 
 export default function HomeScreen() {
-  const { user, signOut } = useAuth(mobileAuthAdapter);
+  const { user, signOut } = useAuthContext();
   const { items, hydrated, addStock, removeStock, setTargetPrice, markAlertFired, reorderAll, clearAll } =
     useWatchlist(mobileStorageAdapter, user?.id ?? '');
   const symbols = items.map((i) => i.symbol);
