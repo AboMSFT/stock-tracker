@@ -23,7 +23,7 @@ export function Sparkline({ prices, positive }: SparklineProps) {
   const linePath = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p}`).join(' ');
   const fillPath = `${linePath} L${W},${H} L0,${H} Z`;
 
-  const color = positive ? '#00c87f' : '#ff4d6a';
+  const color = positive ? '#4ade80' : '#ff4d6a';
   const fill = positive ? 'rgba(0,200,127,0.1)' : 'rgba(255,77,106,0.1)';
 
   return (

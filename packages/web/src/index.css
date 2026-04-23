@@ -13,12 +13,13 @@
   --text-primary: #f0f0f5;
   --text-secondary: #9090a8;
   --text-muted: #5a5a72;
-  --green: #00c87f;
-  --green-bg: rgba(0, 200, 127, 0.08);
+  --green: #4ade80;
+  --green-bg: rgba(74, 222, 128, 0.08);
   --red: #ff4d6a;
   --red-bg: rgba(255, 77, 106, 0.08);
-  --accent: #6c8eff;
-  --accent-hover: #8aa4ff;
+  --accent: #74c365;
+  --accent-hover: #8ed47f;
+  --accent-glow: rgba(116, 195, 101, 0.35);
   --alert-bg: #ffa500;
   --radius: 16px;
   --radius-sm: 10px;
@@ -56,7 +57,7 @@ input { font-family: inherit; color: inherit; }
 .header-right { display: flex; align-items: center; gap: 8px; }
 .notif-btn { display: flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 50%; background: var(--surface2); color: var(--alert-bg); transition: background 0.15s; }
 .notif-btn:hover { background: var(--border); }
-.icon-btn { display: flex; align-items: center; justify-content: center; width: 42px; height: 42px; border-radius: 50%; background: var(--accent); color: #fff; box-shadow: 0 4px 14px rgba(108,142,255,0.35); transition: background 0.15s, transform 0.1s; }
+.icon-btn { display: flex; align-items: center; justify-content: center; width: 42px; height: 42px; border-radius: 50%; background: var(--accent); color: #fff; box-shadow: 0 4px 14px var(--accent-glow); transition: background 0.15s, transform 0.1s; }
 .icon-btn:active { transform: scale(0.93); }
 .icon-btn:hover { background: var(--accent-hover); }
 .icon-btn--danger { background: rgba(255,77,106,0.2); color: var(--red); box-shadow: none; }
@@ -96,7 +97,7 @@ input { font-family: inherit; color: inherit; }
 .tile-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 4px; }
 .tile-symbol-wrap { display: flex; flex-direction: column; gap: 3px; }
 .tile-symbol { font-size: 17px; font-weight: 700; color: var(--text-primary); letter-spacing: 0.3px; }
-.tile-target-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; padding: 2px 6px; border-radius: 999px; background: rgba(108,142,255,0.15); color: var(--accent); font-weight: 500; }
+.tile-target-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; padding: 2px 6px; border-radius: 999px; background: rgba(116,195,101,0.15); color: var(--accent); font-weight: 500; }
 .tile-crypto-badge { display: inline-flex; align-items: center; justify-content: center; font-size: 9px; padding: 2px 5px; border-radius: 999px; background: rgba(255,165,0,0.15); color: #f5a623; font-weight: 700; letter-spacing: 0.05em; line-height: 1; }
 .badge-fired { background: rgba(255,165,0,0.2); color: var(--alert-bg); }
 .tile-remove-btn { display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 8px; color: var(--text-muted); transition: background 0.15s, color 0.15s; flex-shrink: 0; }
@@ -192,7 +193,7 @@ input { font-family: inherit; color: inherit; }
 .tile-drag-handle:active { cursor: grabbing; }
 
 /* ── Install Banner ───────────────────────────────── */
-.install-banner { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: rgba(108,142,255,0.12); border-bottom: 1px solid rgba(108,142,255,0.25); font-size: 13px; color: var(--text-secondary); }
+.install-banner { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: rgba(116,195,101,0.12); border-bottom: 1px solid rgba(116,195,101,0.25); font-size: 13px; color: var(--text-secondary); }
 .install-banner-icon { color: var(--accent); flex-shrink: 0; }
 .install-banner-text { flex: 1; line-height: 1.4; }
 .install-banner-btn { padding: 5px 12px; border-radius: 8px; background: var(--accent); color: #fff; font-size: 12px; font-weight: 600; flex-shrink: 0; }

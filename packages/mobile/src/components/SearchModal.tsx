@@ -226,7 +226,7 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   addIcon: {
-    color: '#3b82f6',
+    color: '#74c365',
     fontSize: 22,
     fontWeight: '300',
   },

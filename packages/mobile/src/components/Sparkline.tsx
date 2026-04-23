@@ -28,7 +28,7 @@ export function Sparkline({ prices, positive, width = 150, height = 36 }: Sparkl
 
   const fillPath = `${linePath} L${width},${height} L0,${height} Z`;
 
-  const color = positive ? '#00c87f' : '#ff4d6a';
+  const color = positive ? '#4ade80' : '#ff4d6a';
   const fill = positive ? 'rgba(0,200,127,0.1)' : 'rgba(255,77,106,0.1)';
 
   return (

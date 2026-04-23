@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   targetBadge: {
-    backgroundColor: '#3b82f622',
+    backgroundColor: 'rgba(116,195,101,0.13)',
     borderRadius: 4,
     paddingHorizontal: 4,
     paddingVertical: 1,
@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f59e0b22',
   },
   targetBadgeText: {
-    color: '#93c5fd',
+    color: '#8ed47f',
     fontSize: 9,
   },
   dragHandleText: {
@@ -254,7 +254,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   setBtn: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: '#74c365',
     borderRadius: 6,
     paddingHorizontal: 10,
     paddingVertical: 4,
