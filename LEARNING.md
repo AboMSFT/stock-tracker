@@ -43,6 +43,14 @@
    - [Self-hosted — Nginx and Apache](#self-hosted--nginx-and-apache)
    - [Azure — Static Web Apps + Azure Functions](#azure--static-web-apps--azure-functions)
 6. [Quick Reference Tables](#quick-reference-tables)
+7. [Authentication & Backend (Supabase)](#section-12-authentication--backend-as-a-service-supabase)
+   - [What is a Backend?](#1-what-is-a-backend)
+   - [Authentication Flow](#2-authentication-flow)
+   - [React Context](#3-react-context--sharing-state-without-prop-drilling)
+   - [Row Level Security (RLS)](#4-row-level-security-rls)
+   - [useMemo — Stable References](#5-usememo--stable-object-references)
+   - [Async Race Conditions](#6-async-race-conditions)
+   - [Building & Deploying iOS](#7-building--deploying-a-native-ios-app)
 
 ---
 
@@ -2242,7 +2250,208 @@ Pass `AnalyticsAdapter` into `useWatchlist` alongside `StorageAdapter`, or creat
 
 ---
 
-# Quick Reference Tables (updated)
+# Section 12: Authentication & Backend-as-a-Service (Supabase)
+
+## 1. What is a Backend?
+
+Most apps need a **server** to:
+- Store data in a database (so it survives a page refresh)
+- Verify who a user is (authentication)
+- Keep data private (authorisation — each user only sees their own data)
+
+Building this from scratch requires: a server process, a database, a JWT library, session management, password hashing, email sending… that's weeks of work.
+
+**Backend-as-a-Service (BaaS)** gives you all of this via a hosted service. You call a JavaScript library and the server side is already done.
+
+**Supabase** is the BaaS used in this app. It provides:
+- Postgres database (real SQL)
+- Auth (sign-up, sign-in, JWT sessions)
+- REST and realtime API auto-generated from your tables
+- Row Level Security (RLS) — SQL-based access control
+
+---
+
+## 2. Authentication Flow
+
+When a user signs in, Supabase issues a **JWT** (JSON Web Token):
+
+```
+User → email + password → Supabase Auth
+                            └─▶ check password hash in auth.users
+                            └─▶ issue JWT { sub: user_id, exp: ... }
+                            └─▶ store in localStorage (web) or memory (mobile)
+
+Later, when calling the database:
+  request headers: Authorization: Bearer <JWT>
+  Supabase verifies the JWT → extracts user_id → enforces RLS policy
+```
+
+In C++ terms: the JWT is like a signed ticket. Anyone can read it but only Supabase can forge it (because it's signed with Supabase's secret key). The database checks the ticket on every query.
+
+---
+
+## 3. React Context — Sharing State Without Prop Drilling
+
+When many components need the same data (like "who is the logged-in user?"), passing it as props through every component gets messy:
+
+```typescript
+// ❌ Prop drilling — every layer has to pass it through
+<App user={user}>
+  <Layout user={user}>
+    <HomeScreen user={user}>
+      <Header user={user} />
+```
+
+**React Context** solves this: one component provides the data, any descendant can consume it directly.
+
+```typescript
+// 1. Create the context
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+// 2. Provide it at the top level (root layout)
+export function AuthProvider({ children }) {
+  const { user, loading, signOut } = useAuth(mobileAuthAdapter);
+  return (
+    <AuthContext.Provider value={{ user, loading, signOut }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+// 3. Consume it anywhere in the tree — no props needed
+export function useAuthContext() {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuthContext must be used inside AuthProvider');
+  return ctx;
+}
+
+// In any screen:
+function HomeScreen() {
+  const { user, signOut } = useAuthContext(); // ← no props!
+}
+```
+
+**Why not call `useAuth` in every screen?**  
+`useAuth` calls `supabase.onAuthStateChange` which creates a new subscription. Multiple subscriptions on the same client race each other and produce spurious `SIGNED_OUT` events. Context lets us have exactly one subscription shared everywhere.
+
+---
+
+## 4. Row Level Security (RLS)
+
+RLS is a Postgres feature that adds a filter to **every** query on a table automatically. Even if you write `SELECT * FROM user_storage`, Postgres silently adds `AND user_id = auth.uid()`.
+
+```sql
+-- Create the policy
+create policy "Users manage their own storage"
+  on user_storage for all
+  using  (auth.uid() = user_id)   -- applied to SELECT / UPDATE / DELETE
+  with check (auth.uid() = user_id); -- applied to INSERT / UPDATE
+```
+
+`auth.uid()` is a Postgres function that reads the user ID from the JWT in the request header. Supabase calls it automatically.
+
+| Without RLS | With RLS |
+|---|---|
+| `SELECT * FROM user_storage` → all rows | `SELECT * FROM user_storage` → only your rows |
+| Any user can read/write any row | Users are isolated by the policy |
+
+In C++ terms: RLS is like a firewall rule built into the database itself.
+
+---
+
+## 5. useMemo — Stable Object References
+
+`useMemo` caches a value and only recomputes it when its dependencies change:
+
+```typescript
+// Without useMemo — new object on every render
+const adapter = createSupabaseStorageAdapter(supabase, user.id); // new object!
+
+// With useMemo — same object until user.id changes
+const adapter = useMemo(
+  () => createSupabaseStorageAdapter(supabase, user.id),
+  [user?.id]  // only recreate when user.id changes
+);
+```
+
+**Why does this matter?**  
+`useWatchlist` has a `useEffect` that depends on the `storage` adapter. If `storage` is a new object every render, the effect fires every render — which means saving `[]` to the database constantly.
+
+In C++ terms: it's like memoizing a factory function so you don't reconstruct an expensive object on every loop iteration.
+
+---
+
+## 6. Async Race Conditions
+
+A common React bug: you start an async operation, state changes before it finishes, and the result arrives stale.
+
+**The watchlist hydration race:**
+
+```
+Render 1: userId = ''   → adapter with userId=''  → storageKey = 'watchlist:'
+          getItem('watchlist:') → returns null → items=[], hydrated=true
+
+Render 2: userId = 'abc' → NEW adapter → storageKey = 'watchlist:abc'
+          useEffect fires (storageKey changed):
+            setHydrated(false), setItems([])      ← scheduled, not applied yet
+          save effect ALSO fires (storageKey changed):
+            sees hydrated=true (STALE from Render 1!) → SAVES [] TO SUPABASE ❌
+```
+
+**The fix — `hydratedKeyRef`:**
+
+```typescript
+const hydratedKeyRef = useRef<string | null>(null);
+
+// In hydration effect:
+hydratedKeyRef.current = null;  // clear immediately
+getItem(storageKey).then(() => {
+  hydratedKeyRef.current = storageKey;  // set AFTER load
+  setHydrated(true);
+});
+
+// In save effect:
+if (!hydrated || hydratedKeyRef.current !== storageKey) return; // guard
+```
+
+The `ref` is synchronous — it updates immediately, unlike `useState`. So the save effect sees the up-to-date ref value even before the next render.
+
+---
+
+## 7. Building & Deploying a Native iOS App
+
+Unlike a website (upload files to a server), a native app must be **compiled**, **signed**, and **installed**:
+
+```
+Source code (TypeScript/React Native)
+  └─▶ Metro bundler → JavaScript bundle
+  └─▶ Xcode compiles native Swift/ObjC + bundles JS
+  └─▶ Code signing: Apple verifies the developer identity
+  └─▶ xcrun devicectl device install app → copied to device
+  └─▶ App runs: loads JS bundle from Metro (dev) or embedded (prod)
+```
+
+**Code signing** is Apple's way of ensuring only authorised developers can run code on iPhones. In dev mode, your Mac signs the app with your Apple Developer certificate. The first time you install, you must "Trust" the developer on the device:
+
+> Settings → General → VPN & Device Management → [your cert] → Trust
+
+**Development vs Production build:**
+- **Dev (Debug)**: JS bundle is loaded from Metro over your local network → instant JS changes with no rebuild
+- **Prod (Release)**: JS bundle is embedded in the app binary → requires full rebuild for any change
+
+### ✏️ Exercise
+Why is it safe to store the Supabase `anon` key in the client-side JavaScript, but unsafe to store the `service_role` key?
+
+<details>
+<summary>Answer</summary>
+
+The `anon` key only grants access that RLS policies allow — i.e., a user can only read their own data. The `service_role` key **bypasses RLS entirely**, giving full read/write access to all rows. Putting it in client-side code would let any user extract it and access everyone's data.
+
+</details>
+
+---
+
+
 
 ## JavaScript
 | Concept | Syntax | C++ equivalent |

@@ -14,10 +14,11 @@ A monorepo with three packages: a **React 19 PWA** for the web, an **Expo SDK 53
 6. [File Structure](#file-structure)
 7. [Data Flow](#data-flow)
 8. [API & Proxy](#api--proxy)
-9. [State Management](#state-management)
-10. [Alert System](#alert-system)
-11. [Drag-to-Reorder Grid](#drag-to-reorder-grid)
-12. [Persistence](#persistence)
+9. [Authentication](#authentication)
+10. [State Management](#state-management)
+11. [Alert System](#alert-system)
+12. [Drag-to-Reorder Grid](#drag-to-reorder-grid)
+13. [Persistence & Cloud Sync](#persistence--cloud-sync)
 
 ---
 
@@ -54,12 +55,14 @@ npm install --legacy-peer-deps
 | In-app alert banner — sticky, dismissible | ✅ | ✅ |
 | Auto-refresh — prices polled every 30 seconds | ✅ | ✅ |
 | Pull-to-refresh | ✅ | ✅ |
+| **User authentication** — sign up, sign in, forgot password | ✅ | ✅ |
+| **Cloud watchlist sync** — per-user, survives reinstall | ✅ | ✅ |
 | **Drag-to-reorder tiles** | ❌ | ✅ |
 | Browser push notification — Web Notifications API | ✅ | ❌ |
 | Alert sound — Web Audio API | ✅ | ❌ |
 | PWA installable — Chrome + Safari iOS | ✅ | ❌ |
 | Offline-capable — Workbox service worker | ✅ | ❌ |
-| Persistence | `localStorage` | `AsyncStorage` |
+| Persistence | Supabase (cloud) | Supabase (cloud) |
 
 ---
 
@@ -83,27 +86,56 @@ Each platform provides its own implementation:
 
 ```typescript
 // Web (packages/web) — wraps localStorage
-export const localStorageAdapter: StorageAdapter = {
-  getItem: async (key) => localStorage.getItem(key),
-  setItem: async (key, value) => localStorage.setItem(key, value),
+export const webStorageAdapter: StorageAdapter = {
+  getItem: (key) => Promise.resolve(localStorage.getItem(key)),
+  setItem: (key, value) => Promise.resolve(void localStorage.setItem(key, value)),
 };
 
-// iOS (packages/mobile) — wraps AsyncStorage
+// iOS (packages/mobile) — wraps AsyncStorage (used for migration only now)
 import AsyncStorage from '@react-native-async-storage/async-storage';
-export const asyncStorageAdapter: StorageAdapter = {
+export const mobileStorageAdapter: StorageAdapter = {
   getItem: (key) => AsyncStorage.getItem(key),
   setItem: (key, value) => AsyncStorage.setItem(key, value),
 };
+
+// Cloud — Supabase (both platforms, created per authenticated user)
+export function createSupabaseStorageAdapter(supabase, userId): StorageAdapter {
+  return {
+    async getItem(key) { /* SELECT from user_storage WHERE user_id = userId */ },
+    async setItem(key, value) { /* UPSERT into user_storage */ },
+  };
+}
 ```
 
 The shared hooks only call `adapter.getItem()` / `adapter.setItem()` — they never touch platform APIs directly. This is the same principle as a C++ pure virtual interface with concrete implementations per platform.
+
+### AuthAdapter pattern
+
+Authentication is similarly abstracted so the same `useAuth` hook works on both platforms:
+
+```typescript
+// packages/shared/src/auth.ts
+export interface AuthAdapter {
+  onAuthStateChange(cb: (user: User | null, event: AuthEvent) => void): () => void;
+  signUp(email, password): Promise<{ user, error }>;
+  signIn(email, password): Promise<{ user, error }>;
+  signOut(): Promise<void>;
+  resetPassword(email): Promise<{ error }>;
+  updatePassword(password): Promise<{ error }>;
+}
+```
+
+Both platforms implement this against Supabase:
+- `packages/web/src/authAdapter.ts` — uses `@supabase/supabase-js` with the web Supabase client
+- `packages/mobile/src/authAdapter.ts` — uses `@supabase/supabase-js` with the mobile Supabase client
 
 ### Shared hooks
 
 | Hook | File | Purpose |
 |---|---|---|
-| `useWatchlist(storage)` | `hooks/useWatchlist.ts` | Watchlist CRUD; accepts a `StorageAdapter`; serializes writes to avoid race conditions |
+| `useWatchlist(storage, userId)` | `hooks/useWatchlist.ts` | Watchlist CRUD; accepts a `StorageAdapter`; serializes writes; `hydratedKeyRef` guards against premature saves |
 | `useStockPrices(symbols)` | `hooks/useStockPrices.ts` | Polls Yahoo Finance every 30 seconds; returns a `Map<symbol, StockQuote>` |
+| `useAuth(adapter)` | `hooks/useAuth.ts` | Subscribes to auth state via `onAuthStateChange`; exposes `user`, `loading`, `signOut`, etc. |
 
 ### Shared types (`types.ts`)
 
@@ -113,11 +145,13 @@ The shared hooks only call `adapter.getItem()` / `adapter.setItem()` — they ne
 | `StockQuote` | `symbol`, `price`, `change`, `changePercent`, `currency`, `sparkline?` |
 | `SearchResult` | `symbol`, `shortname`, `longname?`, `assetType?` |
 | `AlertEvent` | `id`, `symbol`, `price`, `targetPrice` |
+| `User` | `id`, `email` |
+| `AuthEvent` | `'INITIAL_SESSION' \| 'SIGNED_IN' \| 'SIGNED_OUT' \| 'PASSWORD_RECOVERY'` |
 
 ### What is NOT in shared
 
 - UI components — each platform has its own (`StockTile`, `SearchModal`, etc.)
-- Platform-specific adapters (`localStorage`, `AsyncStorage`)
+- Platform-specific adapters (`localStorage`, `AsyncStorage`, Supabase client instances)
 - Navigation/routing — web uses Vite SPA, iOS uses Expo Router
 - Gesture and animation — iOS uses RNGH + Reanimated
 
@@ -136,6 +170,7 @@ A **React 19 single-page application** built with Vite 8, deployed as a PWA on A
 | PWA | vite-plugin-pwa + Workbox |
 | Icons | lucide-react |
 | Styling | Plain CSS + custom properties |
+| Auth & DB | Supabase (`@supabase/supabase-js`) |
 | Dev proxy | Vite dev-server (injects Yahoo Finance headers) |
 | Prod proxy | Azure Functions (`api/src/functions/quote.js`) |
 | Hosting | Azure Static Web Apps |
@@ -154,7 +189,8 @@ npx vite --host 0.0.0.0 --port 5173
 
 | Component | Purpose |
 |---|---|
-| `App.tsx` | Root — layout, alert logic, pull-to-refresh |
+| `App.tsx` | Root — auth guard, Supabase storage adapter (useMemo), layout, alert logic, pull-to-refresh, localStorage→Supabase migration |
+| `AuthScreen.tsx` | Sign-in / sign-up / forgot-password / password-reset UI |
 | `StockTile.tsx` | Asset card: ticker, price, %, sparkline, target input |
 | `Sparkline.tsx` | SVG intraday 5-minute mini-chart |
 | `SearchModal.tsx` | Bottom-sheet search; stays open for multi-add |
@@ -198,7 +234,7 @@ A **native iOS app** built with Expo SDK 53 on top of React Native. It shares al
 | Routing | Expo Router (file-based, like Next.js for native) |
 | Gestures | React Native Gesture Handler (RNGH) |
 | Animation | React Native Reanimated |
-| Storage | `@react-native-async-storage/async-storage` |
+| Auth & DB | Supabase (`@supabase/supabase-js`) |
 | Build | Local Xcode (not EAS) |
 | Bundle ID | `com.abohoseini.inwealthment` |
 | Apple Team | `Y836Z4K5J8` |
@@ -207,9 +243,21 @@ A **native iOS app** built with Expo SDK 53 on top of React Native. It shares al
 
 ```bash
 cd packages/mobile
-npx expo start --port 8081
+npx expo start --port 8081 --clear
 # Scan QR code with Expo Go, or use development build on physical device
 ```
+
+### Custom entry point & warning suppression
+
+Metro's entry point is `packages/mobile/index.ts` (set via `"main"` in `package.json`). It imports `suppressWarnings.ts` **before** `expo-router/entry`, ensuring `console.warn` is patched before any module (including `expo-av`) can fire deprecation warnings at module-load time.
+
+```
+index.ts
+  └─▶ import './src/suppressWarnings'  ← patches console.warn first
+  └─▶ import 'expo-router/entry'       ← registers Expo Router
+```
+
+This is necessary because `LogBox.ignoreLogs` and in-component patches run too late — `expo-av` fires its warning at module evaluation time, before any React component mounts.
 
 ### App structure (Expo Router)
 
@@ -217,19 +265,29 @@ Expo Router uses **file-based routing** — the file path in `app/` directly map
 
 ```
 packages/mobile/app/
-├── _layout.tsx    ← Root layout: wraps everything in GestureHandlerRootView
-│                    Required for RNGH gestures to work
-└── index.tsx      ← Home screen: renders DraggableGrid of StockTile cards
-                     Wires useWatchlist + useStockPrices from shared
+├── _layout.tsx          ← Root layout: AuthContext.Provider, auth guard, GestureHandlerRootView
+├── (auth)/
+│   ├── login.tsx        ← Sign-in screen
+│   ├── signup.tsx       ← Sign-up screen
+│   └── forgot-password.tsx
+└── (app)/
+    └── index.tsx        ← Protected home screen: DraggableGrid of StockTile cards
 ```
 
 **`_layout.tsx` (root layout):**
-- Wraps the entire app in `<GestureHandlerRootView style={{ flex: 1 }}>`
-- Required by RNGH — without it, no gesture recognizers work
+- The **only** place `useAuth(mobileAuthAdapter)` is called — a single `onAuthStateChange` subscription
+- Wraps the tree in `<AuthContext.Provider>` — shares `{ user, loading, signOut }` to all screens
+- Auth guard: `!user && !inAuthGroup` → redirect to `/(auth)/login`; `user && !inAppGroup` → redirect to `/(app)`
+- Always renders `<Stack>` — never conditionally omitted (Expo Router navigator must stay mounted for navigation calls to work)
+- Loading overlay is an `absoluteFill` sibling of `<Stack>`, not a replacement
 
-**`index.tsx` (home screen):**
-- Instantiates `asyncStorageAdapter` and passes it to `useWatchlist`
-- Calls `useStockPrices` with the watchlist symbols
+**Why `AuthContext` instead of calling `useAuth` in each screen:**  
+Calling `useAuth` (which calls `onAuthStateChange`) in multiple screens creates multiple concurrent Supabase subscriptions. These race each other and produce spurious `SIGNED_OUT` events, logging the user out immediately after login. `AuthContext` solves this by having a single subscription in the root layout.
+
+**`(app)/index.tsx` (protected home screen):**
+- Reads `{ user, signOut }` from `useAuthContext()`
+- Creates Supabase storage adapter via `useMemo([user?.id])` — stable reference prevents unnecessary re-saves
+- Calls `useWatchlist(storageAdapter, user.id)` and `useStockPrices(symbols)`
 - Renders `<DraggableGrid>` with `<StockTile>` as `renderItem`
 - Handles pull-to-refresh via `RefreshControl`
 
@@ -239,6 +297,7 @@ packages/mobile/app/
 |---|---|
 | `StockTile.tsx` | Native asset card: ticker, price, %, sparkline, ⠿ drag handle |
 | `DraggableGrid.tsx` | 2-column drag-to-reorder grid (Reanimated + RNGH) |
+| `AuthContext.tsx` | React context: single `useAuth` call shared to all screens |
 
 ### Metro monorepo config
 
@@ -280,36 +339,41 @@ xcrun devicectl device process launch \
 │  React 19 + Vite 8 PWA      │    │   Expo SDK 53 + React Native     │
 │                              │    │                                  │
 │  App.tsx                     │    │  app/_layout.tsx                 │
-│  StockTile  Sparkline        │    │    GestureHandlerRootView        │
-│  SearchModal  AlertBanner    │    │  app/index.tsx                   │
+│  AuthScreen                  │    │    AuthContext.Provider          │
+│  StockTile  Sparkline        │    │    auth guard + routing          │
+│  SearchModal  AlertBanner    │    │  app/(app)/index.tsx             │
 │  InstallBanner ErrorBoundary │    │    DraggableGrid + StockTile     │
-│                              │    │                                  │
-│  localStorageAdapter         │    │  asyncStorageAdapter             │
-└─────────────┬────────────────┘    └─────────────┬────────────────────┘
-              │                                   │
-              └──────────────┬────────────────────┘
-                             │ imports @inwealthment/shared
-              ┌──────────────▼──────────────────────────┐
-              │           packages/shared               │
-              │                                         │
-              │  useWatchlist(StorageAdapter)           │
-              │  useStockPrices(symbols)                │
-              │  types: WatchlistItem StockQuote ...    │
-              │  StorageAdapter interface               │
-              └──────────────┬──────────────────────────┘
-                             │ fetch /api/quote
-              ┌──────────────▼──────────────────────────┐
-              │  DEV:  Vite proxy (packages/web)        │
-              │  PROD: Azure Functions (api/)           │
-              └──────────────┬──────────────────────────┘
-                             │ HTTPS (Referer: finance.yahoo.com)
-                             ▼
-              ┌──────────────────────────────────────────┐
-              │         Yahoo Finance API                │
-              │   query1.finance.yahoo.com               │
-              │   /v8/finance/chart/{SYM}  (prices)     │
-              │   /v1/finance/search       (search)      │
-              └──────────────────────────────────────────┘
+│                              │    │  app/(auth)/login|signup|...     │
+│  webAuthAdapter              │    │  mobileAuthAdapter               │
+│  createSupabaseStorageAdapter│    │  createSupabaseStorageAdapter    │
+└──────────┬───────────────────┘    └──────────┬───────────────────────┘
+           │                                   │
+           └──────────────┬────────────────────┘
+                          │ imports @inwealthment/shared
+           ┌──────────────▼──────────────────────────┐
+           │           packages/shared               │
+           │                                         │
+           │  useAuth(AuthAdapter)                   │
+           │  useWatchlist(StorageAdapter, userId)   │
+           │  useStockPrices(symbols)                │
+           │  createSupabaseStorageAdapter(sb, uid)  │
+           │  types: WatchlistItem StockQuote User   │
+           │  StorageAdapter / AuthAdapter interface │
+           └──────┬───────────────────┬─────────────┘
+                  │ fetch /api/quote  │ REST + RLS
+           ┌──────▼──────┐    ┌──────▼──────────────┐
+           │  DEV: Vite  │    │  Supabase            │
+           │  PROD: Azure│    │  auth.users (JWT)    │
+           │  Functions  │    │  user_storage table  │
+           └──────┬──────┘    └──────────────────────┘
+                  │ HTTPS (Referer: finance.yahoo.com)
+                  ▼
+           ┌──────────────────────────────────────────┐
+           │         Yahoo Finance API                │
+           │   query1.finance.yahoo.com               │
+           │   /v8/finance/chart/{SYM}  (prices)     │
+           │   /v1/finance/search       (search)      │
+           └──────────────────────────────────────────┘
 ```
 
 ---
@@ -328,31 +392,40 @@ stock-tracker/                               # repo root (npm workspaces)
     │   ├── package.json
     │   └── src/
     │       ├── index.ts                     # barrel exports
-    │       ├── types.ts                     # WatchlistItem, StockQuote, SearchResult, AlertEvent
+    │       ├── types.ts                     # WatchlistItem, StockQuote, User, AuthEvent…
     │       ├── storage.ts                   # StorageAdapter interface
+    │       ├── auth.ts                      # AuthAdapter interface
+    │       ├── supabaseStorageAdapter.ts    # createSupabaseStorageAdapter(supabase, userId)
     │       └── hooks/
     │           ├── useWatchlist.ts          # Watchlist CRUD — platform-agnostic
-    │           └── useStockPrices.ts        # Price polling — 30 s interval
+    │           ├── useStockPrices.ts        # Price polling — 30 s interval
+    │           └── useAuth.ts              # Auth state subscription hook
     │
     ├── web/                                 # @inwealthment/web
     │   ├── package.json
     │   ├── index.html                       # PWA meta tags, apple-touch-icon
     │   ├── vite.config.ts                   # Vite + dev proxy + VitePWA plugin
     │   ├── public/
+    │   │   ├── icon.svg                     # Browser favicon (SVG)
     │   │   ├── icon-192.png                 # PWA manifest icon
     │   │   ├── icon-512.png                 # PWA manifest icon
-    │   │   └── apple-touch-icon.png         # iOS home screen icon
+    │   │   └── apple-touch-icon.png         # iOS home screen icon (180×180)
     │   ├── api/
     │   │   └── src/functions/
     │   │       ├── quote.js                 # Azure Function: proxies price calls
     │   │       └── stocksearch.js           # Azure Function: proxies search calls
     │   └── src/
     │       ├── main.tsx                     # React root; wrapped in ErrorBoundary
-    │       ├── App.tsx                      # Root component — layout, alert logic
+    │       ├── App.tsx                      # Root: auth guard, storage adapter, alert logic
+    │       ├── authAdapter.ts               # webAuthAdapter — wraps Supabase auth
+    │       ├── supabase.ts                  # Supabase client (VITE_SUPABASE_* env vars)
+    │       ├── storage.ts                   # webStorageAdapter — wraps localStorage
     │       ├── index.css                    # Global CSS (dark theme, mobile-first)
     │       ├── services/
     │       │   └── stockService.ts          # Yahoo Finance API calls
     │       └── components/
+    │           ├── auth/
+    │           │   └── AuthScreen.tsx       # Sign-in / sign-up / reset-password UI
     │           ├── StockTile.tsx            # Asset card (stock or crypto)
     │           ├── Sparkline.tsx            # SVG intraday mini-chart
     │           ├── SearchModal.tsx          # Bottom-sheet search; multi-add
@@ -361,17 +434,32 @@ stock-tracker/                               # repo root (npm workspaces)
     │           └── ErrorBoundary.tsx        # React error boundary fallback
     │
     └── mobile/                              # @inwealthment/mobile
-        ├── package.json
+        ├── package.json                     # "main": "index.ts" (custom entry)
+        ├── index.ts                         # Custom entry: suppressWarnings → expo-router/entry
         ├── app.json                         # Expo config (bundle ID, team, SDK version)
         ├── metro.config.js                  # disableHierarchicalLookup: true
         ├── ios/
         │   ├── Podfile                      # fmt/Xcode 26 patch in post_install
         │   └── Inwealthment/
-        │       └── Inwealthment.entitlements
+        │       ├── Inwealthment.entitlements
+        │       └── Images.xcassets/
+        │           └── AppIcon.appiconset/  # App icon (1024×1024 IW green)
         ├── app/                             # Expo Router — file = screen
-        │   ├── _layout.tsx                  # Root: GestureHandlerRootView wrapper
-        │   └── index.tsx                    # Home screen: wires shared hooks → UI
+        │   ├── _layout.tsx                  # Root: AuthContext.Provider, auth guard, Stack
+        │   ├── (auth)/
+        │   │   ├── login.tsx                # Sign-in screen
+        │   │   ├── signup.tsx               # Sign-up screen
+        │   │   └── forgot-password.tsx      # Password reset screen
+        │   └── (app)/
+        │       └── index.tsx                # Protected home screen
+        ├── assets/
+        │   └── icon.png                     # Source icon (1024×1024, green IW)
         └── src/
+            ├── suppressWarnings.ts          # Patches console.warn before any module loads
+            ├── AuthContext.tsx              # React context — single useAuth subscription
+            ├── authAdapter.ts               # mobileAuthAdapter — wraps Supabase auth
+            ├── supabase.ts                  # Supabase client (EXPO_PUBLIC_SUPABASE_* env vars)
+            ├── storage.ts                   # mobileStorageAdapter — wraps AsyncStorage
             └── components/
                 ├── StockTile.tsx            # Native asset card + drag handle
                 └── DraggableGrid.tsx        # 2-column drag-to-reorder grid
@@ -381,12 +469,28 @@ stock-tracker/                               # repo root (npm workspaces)
 
 ## Data Flow
 
+### App startup & auth
+
+```
+App mounts (web or iOS)
+  └─▶ useAuth(authAdapter)  [called ONCE in root layout]
+        └─▶ supabase.onAuthStateChange fires INITIAL_SESSION
+              └─▶ user = null  → render auth screens
+              └─▶ user = User  → render app screens
+  └─▶ (if user) useWatchlist(supabaseStorageAdapter, user.id)
+        └─▶ supabase SELECT FROM user_storage WHERE user_id = $uid AND key = $key
+        └─▶ hydratedKeyRef.current = storageKey  (marks hydration complete)
+        └─▶ setItems(parsed JSON)   [safe — save effect blocked until this runs]
+  └─▶ useStockPrices(symbols)  ...
+```
+
 ### Loading prices on startup
 
 ```
 App mounts (web or iOS)
-  └─▶ useWatchlist(storageAdapter)
-        └─▶ adapter.getItem('inwealthment-watchlist')  ← localStorage or AsyncStorage
+  └─▶ useWatchlist(supabaseStorageAdapter, userId)
+        └─▶ adapter.getItem('inwealthment-watchlist:{uid}')
+              └─▶ SELECT value FROM user_storage WHERE user_id=uid AND key=key
         └─▶ setItems(parsed JSON)
   └─▶ useStockPrices(symbols)
         └─▶ stockService.fetchQuotes(symbols)
@@ -409,6 +513,7 @@ User opens Search (web: SearchModal / iOS: same pattern)
   └─▶ User taps "+" on a result
   └─▶ useWatchlist.addStock(symbol, companyName, assetType)
         └─▶ adapter.setItem(key, JSON.stringify(items))
+              └─▶ UPSERT INTO user_storage (user_id, key, value, updated_at)
   └─▶ symbols array changes → useStockPrices re-runs
   └─▶ new price + sparkline fetched; tile appears
 ```
@@ -423,7 +528,7 @@ User long-presses tile (300 ms) → RNGH Pan gesture activates
         ← NOT left/top (avoids Yoga re-layout on every frame)
   └─▶ User releases → nearestIndex() worklet maps position → grid slot
   └─▶ onDragEnd(from, to) called on JS thread via runOnJS
-  └─▶ useWatchlist.reorderAll(symbolOrder) updates + persists
+  └─▶ useWatchlist.reorderAll(symbolOrder) updates + persists to Supabase
 ```
 
 ### Target price alert
@@ -443,7 +548,55 @@ useStockPrices polls every 30 s
 
 ---
 
-## API & Proxy
+## Authentication
+
+Authentication is handled by **Supabase Auth** (email + password). The same `useAuth` hook and `AuthAdapter` interface are used on both platforms.
+
+### Supabase project
+
+| Setting | Value |
+|---|---|
+| Project URL | `https://zcpkjqbxqfvuxgosossc.supabase.co` |
+| Auth provider | Email + password (built-in) |
+| Database table | `user_storage` (per-user key-value store) |
+
+### Auth flow
+
+```
+User enters email + password
+  └─▶ authAdapter.signIn(email, password)
+        └─▶ supabase.auth.signInWithPassword(...)
+        └─▶ Supabase issues JWT (access token + refresh token)
+        └─▶ onAuthStateChange fires SIGNED_IN → user set in state
+        └─▶ root layout redirects to /(app)
+```
+
+### Auth screens (mobile route group `(auth)/`)
+
+| Screen | Route | Purpose |
+|---|---|---|
+| Login | `/(auth)/login` | Email + password sign-in |
+| Sign Up | `/(auth)/signup` | New account creation |
+| Forgot Password | `/(auth)/forgot-password` | Send reset email |
+
+Auth screens call adapter methods directly (`mobileAuthAdapter.signIn(...)`) — they don't need `useAuth` since they don't consume user/loading state.
+
+### Security: Row Level Security (RLS)
+
+The `user_storage` table uses Postgres RLS so each user can only read and write their own rows:
+
+```sql
+create policy "Users manage their own storage"
+  on user_storage for all
+  using  (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+```
+
+Supabase automatically validates the JWT and exposes `auth.uid()` to the policy. No server-side code required.
+
+---
+
+
 
 Both platforms call the same API endpoints. The Yahoo Finance API requires `Referer` and `Origin` header overrides to avoid being blocked — a proxy handles this.
 
@@ -476,7 +629,9 @@ No global state library. State lives in React hooks, scoped to each component tr
 
 | State | Hook / Location | Persisted | Platform |
 |---|---|---|---|
-| Watchlist items + targets | `useWatchlist` | ✅ via StorageAdapter | Both |
+| Authenticated user | `useAuth` → `AuthContext` | Supabase session (JWT) | Both |
+| Auth loading | `useAuth` | ❌ in-memory | Both |
+| Watchlist items + targets | `useWatchlist` | ✅ Supabase `user_storage` | Both |
 | Live quotes + sparklines | `useStockPrices` | ❌ in-memory | Both |
 | Refresh trigger | `useStockPrices` (refreshKey) | ❌ in-memory | Both |
 | Active alert banners | `App` (useState array) | ❌ in-memory | Both |
@@ -558,16 +713,60 @@ Each tile's `useAnimatedStyle` checks `draggingIndex.value === index` (closure-c
 
 ---
 
-## Persistence
+## Persistence & Cloud Sync
 
-The watchlist is stored under the key `inwealthment-watchlist` as a JSON array.
+The watchlist is stored in Supabase under the key `inwealthment-watchlist:{userId}` as a JSON array, scoped per user.
 
-| Platform | Storage API | Adapter |
+### Supabase `user_storage` table
+
+```sql
+create table user_storage (
+  user_id    uuid references auth.users(id) on delete cascade not null,
+  key        text not null,
+  value      text not null,
+  updated_at timestamptz default now() not null,
+  primary key (user_id, key)
+);
+```
+
+| Platform | Storage | Adapter |
 |---|---|---|
-| Web | `localStorage` | `localStorageAdapter` |
-| iOS | `AsyncStorage` | `asyncStorageAdapter` |
+| Web | Supabase `user_storage` | `createSupabaseStorageAdapter(supabase, userId)` |
+| iOS | Supabase `user_storage` | `createSupabaseStorageAdapter(supabase, userId)` |
 
-Both satisfy `StorageAdapter`. `useWatchlist` is fully platform-agnostic — it only calls `adapter.getItem()` and `adapter.setItem()`.
+Both platforms use the identical adapter, so the watchlist is automatically synced — add a stock on iPhone, see it on the web app on next load.
+
+### Adapter design decisions
+
+**`userId` passed as a parameter** (not retrieved on every call) — avoids an expensive `getUser()` round-trip on every read/write.
+
+**Throws on DB errors** (does not return `null`) — if the Supabase read fails, `useWatchlist`'s `.catch` sets `loadError` and leaves `hydrated = false`, preventing a subsequent save of `[]` that would wipe the real watchlist.
+
+**`hydratedKeyRef` race condition guard** — the save effect in `useWatchlist` has `storage` and `storageKey` as deps. When a user signs in, both change simultaneously. React's effects fire with the stale closure values, so `hydrated` can be `true` from the previous cycle while `items` is `[]`. The guard `hydratedKeyRef.current !== storageKey` blocks any save until the async `getItem` for the *current* key has completed.
+
+```
+storageKey changes
+  ├─▶ Hydration effect: hydratedKeyRef.current = null
+  │     then async getItem …
+  │     … resolves → hydratedKeyRef.current = storageKey → setHydrated(true)
+  └─▶ Save effect: hydrated=true (stale) BUT hydratedKeyRef.current ≠ storageKey → SKIP
+        (re-fires after setHydrated(true) with matching ref → save allowed)
+```
+
+**Stable adapter reference** — both platforms create the adapter via `useMemo([user?.id])`, preventing `useWatchlist`'s save effect from re-firing unnecessarily on every render.
+
+### Web localStorage migration
+
+When a user first signs in on the web after the Supabase migration, `App.tsx` runs a one-time `useEffect` that reads any existing watchlist from `localStorage` and upserts it to Supabase. It only removes the local copy after the write succeeds.
+
+```typescript
+useEffect(() => {
+  const legacyRaw = localStorage.getItem(`inwealthment-watchlist:${user.id}`);
+  if (!legacyRaw) return;
+  supabase.from('user_storage').upsert({ user_id, key, value: legacyRaw })
+    .then(({ error }) => { if (!error) localStorage.removeItem(key); });
+}, [user?.id]);
+```
 
 ```json
 [
