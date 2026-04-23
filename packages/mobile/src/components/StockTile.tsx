@@ -53,6 +53,7 @@ export function StockTile({ item, quote, hasFetched, onRemove, onSetTarget }: St
     <View style={[styles.tile, item.alertFired && styles.tileAlertFired]}>
       {/* Header */}
       <View style={styles.header}>
+        <Text style={styles.dragHandleText}>⠿</Text>
         <View style={styles.symbolRow}>
           <Text style={styles.symbol}>{item.symbol}</Text>
           {item.assetType === 'crypto' && (
@@ -68,12 +69,9 @@ export function StockTile({ item, quote, hasFetched, onRemove, onSetTarget }: St
             </View>
           )}
         </View>
-        <View style={styles.headerRight}>
-          <Text style={styles.dragHandleText}>⠿</Text>
-          <TouchableOpacity onPress={() => onRemove(item.symbol)} hitSlop={8}>
-            <Text style={styles.removeBtn}>✕</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity onPress={() => onRemove(item.symbol)} hitSlop={8}>
+          <Text style={styles.removeBtn}>✕</Text>
+        </TouchableOpacity>
       </View>
 
       <Text style={styles.name} numberOfLines={1}>{item.companyName}</Text>
