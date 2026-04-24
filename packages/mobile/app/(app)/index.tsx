@@ -33,7 +33,7 @@ export default function HomeScreen() {
     [user?.id]
   );
 
-  const { items, hydrated, addStock, removeStock, setTargetPrice, markAlertFired, reorderAll, clearAll } =
+  const { items, hydrated, addStock, removeStock, setTargetPrice, markAlertFired, reorderAll, clearAll, reloadFromStorage } =
     useWatchlist(storageAdapter, user?.id ?? '');
   const symbols = items.map((i) => i.symbol);
   const { quotes, loading, hasFetched, error, refresh } = useStockPrices(symbols, stockService, 30000);
@@ -45,9 +45,15 @@ export default function HomeScreen() {
 
   const handleManualRefresh = useCallback(async () => {
     setManualRefreshing(true);
-    await refresh();
+    await Promise.all([reloadFromStorage(), refresh()]);
     setManualRefreshing(false);
-  }, [refresh]);
+  }, [refresh, reloadFromStorage]);
+
+  // Sync watchlist from DB on the same interval as price refresh (30s).
+  useEffect(() => {
+    const id = setInterval(reloadFromStorage, 30000);
+    return () => clearInterval(id);
+  }, [reloadFromStorage]);
 
   useEffect(() => {
     requestNotificationPermission().then(setNotifGranted);

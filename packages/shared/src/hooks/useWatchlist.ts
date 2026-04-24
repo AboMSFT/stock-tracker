@@ -130,5 +130,22 @@ export function useWatchlist(storage: StorageAdapter, userId: string) {
     [hydrated]
   );
 
-  return { items, hydrated, loadError, addStock, removeStock, setTargetPrice, markAlertFired, reorderStocks, reorderAll, clearAll };
+  // Re-read from DB and update items if the data has changed (cross-device sync).
+  const reloadFromStorage = useCallback(async () => {
+    if (!hydrated) return;
+    try {
+      const raw = await storage.getItem(storageKey);
+      const fresh = raw ? (JSON.parse(raw) as WatchlistItem[]) : [];
+      setItems((prev) => {
+        // Only update if something actually changed to avoid unnecessary re-renders.
+        const prevJson = JSON.stringify(prev);
+        const freshJson = JSON.stringify(fresh);
+        return prevJson === freshJson ? prev : fresh;
+      });
+    } catch {
+      // Silently ignore — stale local data is better than crashing.
+    }
+  }, [hydrated, storage, storageKey]);
+
+  return { items, hydrated, loadError, addStock, removeStock, setTargetPrice, markAlertFired, reorderStocks, reorderAll, clearAll, reloadFromStorage };
 }
