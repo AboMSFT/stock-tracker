@@ -201,6 +201,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    backgroundColor: colors.surfaceTranslucent,
   },
   title: {
     color: colors.text,
@@ -296,6 +297,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderTopWidth: 1,
     borderTopColor: colors.border,
+    backgroundColor: colors.surfaceTranslucent,
   },
   footerCount: {
     color: colors.muted,
