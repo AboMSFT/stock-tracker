@@ -29,6 +29,9 @@ jobs:
       - name: Install and build
         run: npm ci --legacy-peer-deps && npm run build:web
         working-directory: .
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
       - name: Build And Deploy
         id: builddeploy
