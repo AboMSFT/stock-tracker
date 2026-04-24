@@ -30,3 +30,4 @@ android/
 packages/mobile/.env
 .env
 .env.local
+packages/mobile/build/
