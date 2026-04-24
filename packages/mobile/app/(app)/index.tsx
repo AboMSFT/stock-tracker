@@ -8,7 +8,7 @@ import {
   Alert,
   StatusBar,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useWatchlist, useStockPrices, formatPrice, createSupabaseStorageAdapter } from '@inwealthment/shared';
 import type { AlertEvent } from '@inwealthment/shared';
 import { useAuthContext } from '../../src/AuthContext';
@@ -25,6 +25,7 @@ import { colors } from '../../src/theme';
 
 export default function HomeScreen() {
   const { user, signOut } = useAuthContext();
+  const insets = useSafeAreaInsets();
 
   // Supabase-backed storage – stable reference per user.
   const storageAdapter = useMemo(
@@ -165,7 +166,7 @@ export default function HomeScreen() {
 
         {/* Footer */}
         {items.length > 0 && (
-          <View style={styles.footer}>
+          <View style={[styles.footer, { paddingBottom: insets.bottom + 10 }]}>
             <Text style={styles.footerCount}>
               Watching {items.length} {items.length === 1 ? 'asset' : 'assets'}
             </Text>
