@@ -40,6 +40,13 @@ export default function HomeScreen() {
   const [showSearch, setShowSearch] = useState(false);
   const [activeAlerts, setActiveAlerts] = useState<AlertEvent[]>([]);
   const [notifGranted, setNotifGranted] = useState(false);
+  const [manualRefreshing, setManualRefreshing] = useState(false);
+
+  const handleManualRefresh = useCallback(async () => {
+    setManualRefreshing(true);
+    await refresh();
+    setManualRefreshing(false);
+  }, [refresh]);
 
   useEffect(() => {
     requestNotificationPermission().then(setNotifGranted);
@@ -148,8 +155,8 @@ export default function HomeScreen() {
             contentContainerStyle={styles.grid}
             refreshControl={
               <RefreshControl
-                refreshing={loading}
-                onRefresh={refresh}
+                refreshing={manualRefreshing}
+                onRefresh={handleManualRefresh}
                 tintColor={colors.accent}
               />
             }
