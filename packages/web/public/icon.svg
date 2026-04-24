@@ -2,9 +2,9 @@
     <rect width='512' height='512' fill='#74c365'/>
     <text
       x='50%' y='50%'
-      font-family='Arial Black, Arial, Helvetica, sans-serif'
-      font-weight='900'
-      font-size='205'
+      font-family='Georgia, Times New Roman, Times, serif'
+      font-weight='bold'
+      font-size='282'
       fill='#000000'
       text-anchor='middle'
       dominant-baseline='central'
