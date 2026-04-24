@@ -96,13 +96,19 @@ export default function HomeScreen() {
     ]);
   }
 
+  const [headerHeight, setHeaderHeight] = useState(60);
+  const [footerHeight, setFooterHeight] = useState(60);
+
   return (
     <ErrorBoundary>
       <SafeAreaView style={styles.safe} edges={['top']}>
         <StatusBar barStyle="light-content" backgroundColor={colors.background} />
 
-        {/* Header */}
-        <View style={styles.header}>
+        {/* Translucent header — floats above content */}
+        <View
+          style={styles.header}
+          onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
+        >
           <Text style={styles.title}>🤑🚀 Inwealthment</Text>
           <View style={styles.headerRight}>
             {!notifGranted && (
@@ -124,14 +130,14 @@ export default function HomeScreen() {
 
         {/* Error bar */}
         {error && (
-          <View style={styles.errorBar}>
+          <View style={[styles.errorBar, { marginTop: headerHeight }]}>
             <Text style={styles.errorText}>{error}</Text>
           </View>
         )}
 
-        {/* Watchlist */}
+        {/* Watchlist — scrolls behind header and footer */}
         {items.length === 0 ? (
-          <View style={styles.empty}>
+          <View style={[styles.empty, { paddingTop: headerHeight }]}>
             <Text style={styles.emptyIcon}>📊</Text>
             <Text style={styles.emptyTitle}>Your watchlist is empty</Text>
             <Text style={styles.emptySub}>Tap the + button to add stocks or crypto</Text>
@@ -153,7 +159,7 @@ export default function HomeScreen() {
               />
             )}
             onReorder={(newItems) => reorderAll(newItems.map((i) => i.symbol))}
-            contentContainerStyle={styles.grid}
+            contentContainerStyle={[styles.grid, { paddingTop: headerHeight, paddingBottom: footerHeight }]}
             refreshControl={
               <RefreshControl
                 refreshing={manualRefreshing}
@@ -164,9 +170,12 @@ export default function HomeScreen() {
           />
         )}
 
-        {/* Footer */}
+        {/* Translucent footer — floats above content */}
         {items.length > 0 && (
-          <View style={[styles.footer, { paddingBottom: insets.bottom + 10 }]}>
+          <View
+            style={[styles.footer, { paddingBottom: insets.bottom + 10 }]}
+            onLayout={(e) => setFooterHeight(e.nativeEvent.layout.height)}
+          >
             <Text style={styles.footerCount}>
               Watching {items.length} {items.length === 1 ? 'asset' : 'assets'}
             </Text>
@@ -194,6 +203,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   header: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -290,6 +304,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
