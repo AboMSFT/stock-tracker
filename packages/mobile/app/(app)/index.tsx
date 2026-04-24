@@ -106,8 +106,8 @@ export default function HomeScreen() {
 
         {/* Translucent header — floats above content */}
         <View
-          style={styles.header}
-          onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
+          style={[styles.header, { top: insets.top }]}
+          onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height + insets.top)}
         >
           <Text style={styles.title}>🤑🚀 Inwealthment</Text>
           <View style={styles.headerRight}>
