@@ -171,6 +171,7 @@ export default function HomeScreen() {
                 refreshing={manualRefreshing}
                 onRefresh={handleManualRefresh}
                 tintColor={colors.accent}
+                progressViewOffset={headerHeight}
               />
             }
           />
