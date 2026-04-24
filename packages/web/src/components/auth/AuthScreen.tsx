@@ -70,6 +70,9 @@ const s = {
   } as React.CSSProperties,
   success: {
     color: '#4ade80',
+    fontSize: '14px',
+  } as React.CSSProperties,
+  link: {
     color: 'var(--accent)',
     fontSize: '14px',
     cursor: 'pointer',
